@@ -1,2 +1,62 @@
-# TBD
-A free, verified platform for  Kashmiri students and diaspora worldwide.
+# Hum Watan
+
+A free, verified platform for Kashmiri students and diaspora worldwide.
+
+## Stack
+
+Next.js 16 (App Router) · TypeScript · TailwindCSS · shadcn/ui · Drizzle ORM · PostgreSQL ·
+Auth.js · MapLibre GL · React Hook Form · Zod · TanStack Query
+
+## Architecture
+
+Vertical-slice, feature-first structure — see `src/features/*`. Each feature owns its own
+actions, queries, components, and validators. Only cross-feature primitives live in
+`src/shared/`. See `src/db/schema/` for the data model.
+
+## Getting started
+
+1. Copy the env file and fill in secrets:
+
+   ```bash
+   cp .env.example .env
+   openssl rand -base64 32   # paste into AUTH_SECRET
+   ```
+
+2. Start Postgres (or point `DATABASE_URL` at your own instance):
+
+   ```bash
+   docker compose up -d
+   ```
+
+3. Install dependencies and push the schema:
+
+   ```bash
+   npm install
+   npm run db:push
+   npm run db:seed   # optional demo data — see console output for login credentials
+   ```
+
+4. Run the dev server:
+
+   ```bash
+   npm run dev
+   ```
+
+## Current MVP status
+
+Implemented:
+
+- Home page: interactive world map (MapLibre GL, OpenFreeMap tiles) plotting mentors/mentees by
+  university, with a distinct larger marker for city/country coordinators
+- Filters by subject, degree level, country, city, and university
+- Mentee sign up / login (direct)
+- Mentor sign up / login, with a mandatory referral field — referee must already be a mentor,
+  and confirms the nomination via an emailed link
+
+Stubbed / not yet implemented (see docs for full scope):
+
+- Referral confirmation emails are logged to the server console (`src/lib/mailer.ts`) — swap in
+  a real provider (e.g. Resend) before launch
+- Phone/SMS verification mentioned in the MVP docs is not implemented; mentees/mentors are
+  verified via email/referral only for now
+- In-app chat, admin/verification dashboards, and Cal.com scheduling are not yet built

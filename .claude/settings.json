@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(docker info *)",
+      "Bash(brew list *)",
+      "Read(//Applications/**)",
+      "Bash(open -a Docker)",
+      "Bash(docker compose *)",
+      "Bash(lsof -ti:3000 -sTCP:LISTEN)",
+      "Bash(npm ls *)",
+      "Bash(npx --yes playwright --version)",
+      "Bash(nohup npm run dev)",
+      "Bash(disown)",
+      "Bash(echo \"started with pid $!\")",
+      "Bash(curl -sf -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000)",
+      "Bash(npx --yes playwright install chromium --with-deps)",
+      "Bash(node --experimental-vm-modules /private/tmp/claude-501/-Users-faizan-Projects-hum-watan-1/517b587e-0f2e-4c4c-8f2e-aa1f4b799425/scratchpad/drive.mjs)",
+      "Bash(NODE_PATH=\"/Users/faizan/.npm/_npx/e41f203b7505f1fb/node_modules\" node /private/tmp/claude-501/-Users-faizan-Projects-hum-watan-1/517b587e-0f2e-4c4c-8f2e-aa1f4b799425/scratchpad/drive.mjs)",
+      "Bash(npm init *)",
+      "Bash(node drive.mjs)",
+      "Bash(grep -A3 \"mailer stub\" /tmp/nextdev.log | tail -20)",
+      "Read(//private/tmp/**)",
+      "Bash(node drive2.mjs 164ed4b5-f23d-4437-8cdd-c2f5414884d3)",
+      "Bash(xargs -r kill)",
+      "Bash(rm -rf /private/tmp/claude-501/-Users-faizan-Projects-hum-watan-1/517b587e-0f2e-4c4c-8f2e-aa1f4b799425/scratchpad/node_modules \\\\ *)",
+      "Bash(git check-ignore *)"
+    ],
+    "additionalDirectories": [
+      "/private/tmp/claude-501/-Users-faizan-Projects-hum-watan-1/517b587e-0f2e-4c4c-8f2e-aa1f4b799425/scratchpad/node_modules"
+    ]
+  }
+}
