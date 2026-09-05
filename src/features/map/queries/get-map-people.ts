@@ -1,22 +1,29 @@
-import { and, eq, ilike } from "drizzle-orm";
+import { and, eq, ilike, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { profiles, users, universities, cities, countries } from "@/db/schema";
 
 export type MapFilters = {
   subject?: string;
-  degreeLevel?: "bachelors" | "masters" | "phd" | "other";
-  cityId?: string;
-  countryId?: string;
-  universityId?: string;
+  degreeLevels?: ("bachelors" | "masters" | "phd" | "other")[];
+  cityIds?: string[];
+  countryIds?: string[];
+  universityIds?: string[];
 };
 
 export async function getMapPeople(filters: MapFilters = {}) {
   const conditions = [
+    eq(profiles.verified, true),
     filters.subject ? ilike(profiles.subject, `%${filters.subject}%`) : undefined,
-    filters.degreeLevel ? eq(profiles.degreeLevel, filters.degreeLevel) : undefined,
-    filters.cityId ? eq(cities.id, filters.cityId) : undefined,
-    filters.countryId ? eq(countries.id, filters.countryId) : undefined,
-    filters.universityId ? eq(profiles.universityId, filters.universityId) : undefined,
+    filters.degreeLevels && filters.degreeLevels.length > 0
+      ? inArray(profiles.degreeLevel, filters.degreeLevels)
+      : undefined,
+    filters.cityIds && filters.cityIds.length > 0 ? inArray(cities.id, filters.cityIds) : undefined,
+    filters.countryIds && filters.countryIds.length > 0
+      ? inArray(countries.id, filters.countryIds)
+      : undefined,
+    filters.universityIds && filters.universityIds.length > 0
+      ? inArray(profiles.universityId, filters.universityIds)
+      : undefined,
   ].filter(Boolean);
 
   const rows = await db

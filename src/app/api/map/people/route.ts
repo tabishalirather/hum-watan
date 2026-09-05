@@ -6,10 +6,10 @@ export async function GET(request: NextRequest) {
 
   const filters: MapFilters = {
     subject: params.get("subject") ?? undefined,
-    degreeLevel: (params.get("degreeLevel") as MapFilters["degreeLevel"]) ?? undefined,
-    cityId: params.get("cityId") ?? undefined,
-    countryId: params.get("countryId") ?? undefined,
-    universityId: params.get("universityId") ?? undefined,
+    degreeLevels: params.getAll("degreeLevel") as MapFilters["degreeLevels"],
+    cityIds: params.getAll("cityId"),
+    countryIds: params.getAll("countryId"),
+    universityIds: params.getAll("universityId"),
   };
 
   const people = await getMapPeople(filters);

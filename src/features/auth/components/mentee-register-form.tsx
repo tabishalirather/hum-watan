@@ -31,7 +31,7 @@ export function MenteeRegisterForm() {
       return;
     }
     await signIn("credentials", { email: data.email, password: data.password, redirect: false });
-    router.push("/");
+    router.push("/profile");
     router.refresh();
   };
 
