@@ -12,6 +12,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import type { MapFilters as MapFiltersState } from "@/features/map/queries/get-map-people";
 
 type FilterOptions = {
@@ -35,6 +36,7 @@ function MultiSelectField({
   onChange: (ids: string[]) => void;
   emptyMessage?: string;
 }) {
+  const hasSelection = selectedIds.length > 0;
   const triggerLabel =
     selectedIds.length === 0
       ? placeholder
@@ -48,11 +50,21 @@ function MultiSelectField({
         render={
           <button
             type="button"
-            className="flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            className={cn(
+              "flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border py-2 pr-2 pl-2.5 text-sm whitespace-nowrap outline-none select-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50",
+              hasSelection
+                ? "border-primary/40 bg-primary/[0.06] font-medium text-foreground focus-visible:border-ring"
+                : "border-input bg-transparent text-muted-foreground focus-visible:border-ring",
+            )}
           />
         }
       >
         <span className="line-clamp-1 flex-1 text-left">{triggerLabel}</span>
+        {hasSelection && (
+          <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+            {selectedIds.length}
+          </span>
+        )}
         <ChevronDownIcon className="pointer-events-none size-4 shrink-0 text-muted-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="max-h-72">
