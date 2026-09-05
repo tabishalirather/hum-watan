@@ -12,6 +12,9 @@ export type MapFilters = {
 
 export async function getMapPeople(filters: MapFilters = {}) {
   const conditions = [
+    // The map is a directory of mentors to find, not a roster of everyone.
+    // Mentees browse it — they're never plotted on it themselves.
+    eq(profiles.role, "mentor"),
     eq(profiles.verified, true),
     filters.subject ? ilike(profiles.subject, `%${filters.subject}%`) : undefined,
     filters.degreeLevels && filters.degreeLevels.length > 0
@@ -30,7 +33,6 @@ export async function getMapPeople(filters: MapFilters = {}) {
     .select({
       userId: users.id,
       name: users.name,
-      role: profiles.role,
       coordinatorLevel: profiles.coordinatorLevel,
       subject: profiles.subject,
       degreeLevel: profiles.degreeLevel,

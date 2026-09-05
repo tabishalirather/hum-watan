@@ -4,8 +4,11 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { updateProfile } from "@/features/profile/actions/update-profile";
-import { profileSchema, type ProfileInput } from "@/features/profile/validators/profile-schema";
+import { updateMentorProfile } from "@/features/profile/actions/update-mentor-profile";
+import {
+	mentorProfileSchema,
+	type MentorProfileInput,
+} from "@/features/profile/validators/mentor-profile-schema";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
@@ -18,11 +21,11 @@ type UniversityOption = {
 	countryName: string;
 };
 
-export function ProfileForm({
+export function MentorProfileForm({
 	initialValues,
 	universities,
 }: {
-	initialValues: ProfileInput;
+	initialValues: MentorProfileInput;
 	universities: UniversityOption[];
 }) {
 	const router = useRouter();
@@ -32,15 +35,15 @@ export function ProfileForm({
 		register,
 		handleSubmit,
 		formState: { errors, isSubmitting },
-	} = useForm<ProfileInput>({
-		resolver: zodResolver(profileSchema),
+	} = useForm<MentorProfileInput>({
+		resolver: zodResolver(mentorProfileSchema),
 		defaultValues: initialValues,
 	});
 
-	const onSubmit = async (values: ProfileInput) => {
+	const onSubmit = async (values: MentorProfileInput) => {
 		setServerError(null);
 		setSaved(false);
-		const result = await updateProfile(values);
+		const result = await updateMentorProfile(values);
 		if (result.error) {
 			setServerError(result.error);
 			return;
@@ -90,6 +93,18 @@ export function ProfileForm({
 				</select>
 				{errors.degreeLevel && (
 					<p className="text-sm text-destructive">{errors.degreeLevel.message}</p>
+				)}
+			</div>
+
+			<div className="space-y-2">
+				<Label htmlFor="scholarshipStatus">Scholarship status (optional)</Label>
+				<Input
+					id="scholarshipStatus"
+					{...register("scholarshipStatus")}
+					placeholder="e.g. Erasmus Mundus, Fulbright, self-funded"
+				/>
+				{errors.scholarshipStatus && (
+					<p className="text-sm text-destructive">{errors.scholarshipStatus.message}</p>
 				)}
 			</div>
 
