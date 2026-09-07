@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db/client";
 import { profiles } from "@/db/schema/profiles";
+import { auditEvents } from "@/db/schema/audit";
 import {
   menteeProfileSchema,
   type MenteeProfileInput,
@@ -16,15 +17,29 @@ export async function updateMenteeProfile(input: MenteeProfileInput) {
   const data = menteeProfileSchema.safeParse(input);
   if (!data.success) return { error: data.error.issues[0]?.message ?? "Invalid profile details." };
 
-  const [profile] = await db
-    .update(profiles)
-    .set({
-      targetPrograms: data.data.targetPrograms,
-      background: data.data.background,
-      helpNeeded: data.data.helpNeeded,
-    })
-    .where(and(eq(profiles.userId, session.user.id), eq(profiles.role, "mentee")))
-    .returning({ userId: profiles.userId });
+  const profile = await db.transaction(async (tx) => {
+    const [updatedProfile] = await tx
+      .update(profiles)
+      .set({
+        targetPrograms: data.data.targetPrograms,
+        background: data.data.background,
+        helpNeeded: data.data.helpNeeded,
+      })
+      .where(and(eq(profiles.userId, session.user.id), eq(profiles.role, "mentee")))
+      .returning({ userId: profiles.userId });
+
+    if (updatedProfile) {
+      await tx.insert(auditEvents).values({
+        actorUserId: session.user.id,
+        action: "mentee_profile_updated",
+        entityType: "profile",
+        entityId: updatedProfile.userId,
+        metadata: { fields: ["targetPrograms", "background", "helpNeeded"] },
+      });
+    }
+
+    return updatedProfile;
+  });
 
   if (!profile) return { error: "We could not find your mentee profile." };
   return { success: true };

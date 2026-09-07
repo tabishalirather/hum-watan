@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db/client";
 import { profiles } from "@/db/schema/profiles";
+import { auditEvents } from "@/db/schema/audit";
 import {
   mentorProfileSchema,
   type MentorProfileInput,
@@ -16,17 +17,31 @@ export async function updateMentorProfile(input: MentorProfileInput) {
   const data = mentorProfileSchema.safeParse(input);
   if (!data.success) return { error: data.error.issues[0]?.message ?? "Invalid profile details." };
 
-  const [profile] = await db
-    .update(profiles)
-    .set({
-      subject: data.data.subject,
-      degreeLevel: data.data.degreeLevel,
-      universityId: data.data.universityId,
-      bio: data.data.bio || null,
-      scholarshipStatus: data.data.scholarshipStatus || null,
-    })
-    .where(and(eq(profiles.userId, session.user.id), eq(profiles.role, "mentor")))
-    .returning({ userId: profiles.userId });
+  const profile = await db.transaction(async (tx) => {
+    const [updatedProfile] = await tx
+      .update(profiles)
+      .set({
+        subject: data.data.subject,
+        degreeLevel: data.data.degreeLevel,
+        universityId: data.data.universityId,
+        bio: data.data.bio || null,
+        scholarshipStatus: data.data.scholarshipStatus || null,
+      })
+      .where(and(eq(profiles.userId, session.user.id), eq(profiles.role, "mentor")))
+      .returning({ userId: profiles.userId });
+
+    if (updatedProfile) {
+      await tx.insert(auditEvents).values({
+        actorUserId: session.user.id,
+        action: "mentor_profile_updated",
+        entityType: "profile",
+        entityId: updatedProfile.userId,
+        metadata: { fields: ["subject", "degreeLevel", "universityId", "bio", "scholarshipStatus"] },
+      });
+    }
+
+    return updatedProfile;
+  });
 
   if (!profile) return { error: "We could not find your mentor profile." };
   return { success: true };

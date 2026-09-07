@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/db/client";
 import { profiles } from "@/db/schema/profiles";
 import { mentorReferrals } from "@/db/schema/referrals";
+import { auditEvents } from "@/db/schema/audit";
 
 export async function reviewMentorReferral(
   referralId: string,
@@ -47,6 +48,13 @@ export async function reviewMentorReferral(
         .set({ verified: true })
         .where(eq(profiles.userId, referral.mentorUserId));
     }
+
+    await tx.insert(auditEvents).values({
+      actorUserId: session.user.id,
+      action: decision === "confirmed" ? "mentor_referral_approved" : "mentor_referral_rejected",
+      entityType: "mentor_referral",
+      entityId: referralId,
+    });
 
     return { success: true };
   });
