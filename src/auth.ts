@@ -33,7 +33,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const user = await db.query.users.findFirst({
           where: eq(users.email, parsed.data.email),
         });
-        if (!user?.passwordHash) return null;
+        if (!user?.passwordHash || !user.isActive) return null;
 
         const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
         if (!valid) return null;

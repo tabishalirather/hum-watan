@@ -1,19 +1,10 @@
-import { and, eq, ilike, inArray } from "drizzle-orm";
+import { and, count, desc, eq, ilike, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { profiles, users, universities, cities, countries } from "@/db/schema";
+import type { MapFilters } from "@/features/map/queries/get-map-people";
 
-export type MapFilters = {
-  subject?: string;
-  degreeLevels?: ("bachelors" | "masters" | "phd" | "other")[];
-  cityIds?: string[];
-  countryIds?: string[];
-  universityIds?: string[];
-};
-
-export async function getMapPeople(filters: MapFilters = {}) {
+export async function getCountryDistribution(filters: MapFilters = {}) {
   const conditions = [
-    // The map is a directory of mentors to find, not a roster of everyone.
-    // Mentees browse it — they're never plotted on it themselves.
     eq(profiles.role, "mentor"),
     eq(profiles.verified, true),
     eq(profiles.visibleOnMap, true),
@@ -33,15 +24,9 @@ export async function getMapPeople(filters: MapFilters = {}) {
 
   const rows = await db
     .select({
-      name: users.name,
-      coordinatorLevel: profiles.coordinatorLevel,
-      subject: profiles.subject,
-      degreeLevel: profiles.degreeLevel,
-      universityName: universities.name,
-      cityName: cities.name,
+      countryId: countries.id,
       countryName: countries.name,
-      lat: universities.lat,
-      lng: universities.lng,
+      count: count(),
     })
     .from(profiles)
     .innerJoin(users, eq(users.id, profiles.userId))
@@ -49,9 +34,10 @@ export async function getMapPeople(filters: MapFilters = {}) {
     .innerJoin(cities, eq(cities.id, universities.cityId))
     .innerJoin(countries, eq(countries.id, cities.countryId))
     .where(and(...conditions))
-    .limit(500);
+    .groupBy(countries.id, countries.name)
+    .orderBy(desc(count()));
 
   return rows;
 }
 
-export type MapPerson = Awaited<ReturnType<typeof getMapPeople>>[number];
+export type CountryDistribution = Awaited<ReturnType<typeof getCountryDistribution>>;

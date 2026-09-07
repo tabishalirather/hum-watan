@@ -30,6 +30,7 @@ export const profiles = pgTable("profiles", {
   }),
   coordinatorLevel: coordinatorLevelEnum("coordinator_level").notNull().default("none"),
   verified: boolean("verified").notNull().default(false),
+  visibleOnMap: boolean("visible_on_map").notNull().default(true),
   scholarshipStatus: text("scholarship_status"),
   // Mentee-only fields. Mentees are aspiring students, not yet enrolled
   // anywhere, so they don't have a university/subject/degree to report —

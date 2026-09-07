@@ -24,21 +24,21 @@ export default async function ProfilePage() {
 			getProfileOptions(),
 			profile.verified
 				? db
-						.select({
-							id: mentorReferrals.id,
-							mentorName: users.name,
-							mentorEmail: users.email,
-							createdAt: mentorReferrals.createdAt,
-						})
-						.from(mentorReferrals)
-						.innerJoin(users, eq(users.id, mentorReferrals.mentorUserId))
-						.where(
-							and(
-								eq(mentorReferrals.refereeUserId, session.user.id),
-								eq(mentorReferrals.status, "pending"),
-							),
-						)
-					: Promise.resolve([]),
+					.select({
+						id: mentorReferrals.id,
+						mentorName: users.name,
+						mentorEmail: users.email,
+						createdAt: mentorReferrals.createdAt,
+					})
+					.from(mentorReferrals)
+					.innerJoin(users, eq(users.id, mentorReferrals.mentorUserId))
+					.where(
+						and(
+							eq(mentorReferrals.refereeUserId, session.user.id),
+							eq(mentorReferrals.status, "pending"),
+						),
+					)
+				: Promise.resolve([]),
 		]);
 		return (
 			<div className="mx-auto w-full max-w-2xl px-4 py-10">

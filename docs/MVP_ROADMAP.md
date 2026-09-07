@@ -272,28 +272,28 @@ src/db/schema/notifications.ts
 
 ### Authorization
 
-- [ ] Add a reusable server-side admin authorization helper
-- [ ] Protect every admin query and mutation on the server
-- [ ] Do not rely on hidden navigation links for authorization
-- [ ] Add admin navigation only for admin users
+- [x] Add a reusable server-side admin authorization helper
+- [x] Protect every admin query and mutation on the server
+- [x] Do not rely on hidden navigation links for authorization
+- [x] Add admin navigation only for admin users
 
 ### Verification Management
 
-- [ ] View pending mentor referrals
-- [ ] View confirmed mentor referrals
-- [ ] View rejected mentor referrals
-- [ ] Inspect mentor profile data
-- [ ] Override verification with a required reason
-- [ ] Revoke verification with a required reason
-- [ ] Preserve who performed the action and when
+- [x] View pending mentor referrals
+- [x] View confirmed mentor referrals
+- [x] View rejected mentor referrals
+- [x] Inspect mentor profile data
+- [x] Override verification with a required reason
+- [x] Revoke verification with a required reason
+- [x] Preserve who performed the action and when
 
 ### User and Content Moderation
 
-- [ ] Search users
-- [ ] View user status and profile completeness
-- [ ] Deactivate accounts
-- [ ] Reactivate accounts
-- [ ] Hide profiles from the public map
+- [x] Search users
+- [x] View user status and profile completeness
+- [x] Deactivate accounts
+- [x] Reactivate accounts
+- [x] Hide profiles from the public map
 - [ ] Review user reports
 - [ ] Resolve reports
 - [ ] Block abusive accounts
@@ -302,11 +302,11 @@ src/db/schema/notifications.ts
 ### Audit History
 
 - [x] Add audit events table
-- [ ] Record admin verification overrides
-- [ ] Record account deactivation/reactivation
+- [x] Record admin verification overrides
+- [x] Record account deactivation/reactivation
 - [ ] Record moderation decisions
 - [ ] Record report resolution
-- [ ] Ensure audit records cannot be edited through normal user actions
+- [x] Ensure audit records cannot be edited through normal user actions
 
 ### Suggested Structure
 

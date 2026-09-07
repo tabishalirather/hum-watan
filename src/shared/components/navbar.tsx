@@ -53,6 +53,11 @@ export function Navbar() {
                   </span>
                 </Button>
               )}
+              {session.user?.role === "admin" && (
+                <Button render={<Link href="/admin" />} nativeButton={false} variant="ghost" size="sm">
+                  Admin
+                </Button>
+              )}
               <Button
                 render={<Link href="/profile" />}
                 nativeButton={false}

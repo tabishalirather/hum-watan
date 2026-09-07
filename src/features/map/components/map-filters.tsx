@@ -5,15 +5,9 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
-import { ArrowUpRight, ChevronDownIcon, ListFilter, Mail, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { ArrowUpRight, ListFilter, Mail, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+import { MultiSelectField } from "@/shared/components/multi-select-field";
 import type { MapFilters as MapFiltersState } from "@/features/map/queries/get-map-people";
 
 type FilterOptions = {
@@ -24,71 +18,6 @@ type FilterOptions = {
 
 const DEGREE_LEVELS = ["bachelors", "masters", "phd", "other"] as const;
 const inviteHref = `mailto:?subject=Join%20Hum%20Watan&body=I%20thought%20you%20might%20like%20Hum%20Watan%2C%20a%20verified%20network%20for%20Kashmiri%20students%20and%20diaspora%3A%20${encodeURIComponent(process.env.NEXT_PUBLIC_APP_URL ?? "")}`;
-
-function MultiSelectField({
-  placeholder = "Any",
-  options,
-  selectedIds,
-  onChange,
-  emptyMessage = "No options yet.",
-}: {
-  placeholder?: string;
-  options: { id: string; label: string }[];
-  selectedIds: string[];
-  onChange: (ids: string[]) => void;
-  emptyMessage?: string;
-}) {
-  const hasSelection = selectedIds.length > 0;
-  const triggerLabel =
-    selectedIds.length === 0
-      ? placeholder
-      : selectedIds.length === 1
-        ? (options.find((option) => option.id === selectedIds[0])?.label ?? "1 selected")
-        : `${selectedIds.length} selected`;
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <button
-            type="button"
-            className={cn(
-              "flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border py-2 pr-2 pl-2.5 text-sm whitespace-nowrap outline-none select-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50",
-              hasSelection
-                ? "border-primary/40 bg-primary/[0.06] font-medium text-foreground focus-visible:border-ring"
-                : "border-input bg-transparent text-muted-foreground focus-visible:border-ring",
-            )}
-          />
-        }
-      >
-        <span className="line-clamp-1 flex-1 text-left">{triggerLabel}</span>
-        {hasSelection && (
-          <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
-            {selectedIds.length}
-          </span>
-        )}
-        <ChevronDownIcon className="pointer-events-none size-4 shrink-0 text-muted-foreground" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="max-h-72">
-        {options.length === 0 && <p className="px-1.5 py-1 text-xs text-muted-foreground">{emptyMessage}</p>}
-        {options.map((option) => {
-          const checked = selectedIds.includes(option.id);
-          return (
-            <DropdownMenuCheckboxItem
-              key={option.id}
-              checked={checked}
-              onCheckedChange={(next) => {
-                onChange(next ? [...selectedIds, option.id] : selectedIds.filter((id) => id !== option.id));
-              }}
-            >
-              {option.label}
-            </DropdownMenuCheckboxItem>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
 
 export function MapFilters({
   filters,
