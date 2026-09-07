@@ -22,6 +22,9 @@ actions, queries, components, and validators. Only cross-feature primitives live
    openssl rand -base64 32   # paste into AUTH_SECRET
    ```
 
+  Email delivery is currently disabled while the project is in testing. Mentor referrals are
+  reviewed directly from the referee's Hum Watan profile.
+
 2. Start Postgres (or point `DATABASE_URL` at your own instance):
 
    ```bash
@@ -57,8 +60,8 @@ Implemented:
 
 Stubbed / not yet implemented (see docs for full scope):
 
-- Referral confirmation emails are logged to the server console (`src/lib/mailer.ts`) — swap in
-  a real provider (e.g. Resend) before launch
+- Mentor referrals are reviewed in-app by the assigned verified referee; email delivery is
+  disabled until a sending domain is configured
 - Phone/SMS verification mentioned in the MVP docs is not implemented; mentees/mentors are
   verified via email/referral only for now
 - In-app chat, admin/verification dashboards, and Cal.com scheduling are not yet built

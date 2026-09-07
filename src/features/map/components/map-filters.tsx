@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
-import { ArrowUpRight, ChevronDownIcon, ListFilter, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { ArrowUpRight, ChevronDownIcon, ListFilter, Mail, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
@@ -22,6 +23,7 @@ type FilterOptions = {
 };
 
 const DEGREE_LEVELS = ["bachelors", "masters", "phd", "other"] as const;
+const inviteHref = `mailto:?subject=Join%20Hum%20Watan&body=I%20thought%20you%20might%20like%20Hum%20Watan%2C%20a%20verified%20network%20for%20Kashmiri%20students%20and%20diaspora%3A%20${encodeURIComponent(process.env.NEXT_PUBLIC_APP_URL ?? "")}`;
 
 function MultiSelectField({
   placeholder = "Any",
@@ -97,6 +99,7 @@ export function MapFilters({
   options: FilterOptions;
   onChange: (filters: MapFiltersState) => void;
 }) {
+  const { status } = useSession();
   const [isExpanded, setIsExpanded] = useState(false);
   const hasFilters = Object.values(filters).some((value) =>
     Array.isArray(value) ? value.length > 0 : Boolean(value),
@@ -198,14 +201,38 @@ export function MapFilters({
       </div>
 
       <div className="col-span-2 mt-auto space-y-2 rounded-2xl border border-border/80 bg-secondary/60 p-4 lg:col-span-1">
-        <p className="text-sm font-semibold text-foreground">Not on the map yet?</p>
-        <p className="text-xs leading-5 text-muted-foreground">
-          Verified students and mentors get a pin on the map automatically.
-        </p>
-        <Button render={<Link href="/register" />} nativeButton={false} size="sm" className="w-full justify-center">
-          Join the network
-          <ArrowUpRight data-icon="inline-end" />
-        </Button>
+        {status === "authenticated" ? (
+          <>
+            <p className="text-sm font-semibold text-foreground">Know someone who belongs here?</p>
+            <p className="text-xs leading-5 text-muted-foreground">
+              Invite another Kashmiri student or mentor to join the network.
+            </p>
+            <Button
+              render={
+                <a
+                  href={inviteHref}
+                />
+              }
+              nativeButton={false}
+              size="sm"
+              className="w-full justify-center"
+            >
+              Invite others to join
+              <Mail data-icon="inline-end" />
+            </Button>
+          </>
+        ) : (
+          <>
+            <p className="text-sm font-semibold text-foreground">Not on the map yet?</p>
+            <p className="text-xs leading-5 text-muted-foreground">
+              Verified students and mentors get a pin on the map automatically.
+            </p>
+            <Button render={<Link href="/register" />} nativeButton={false} size="sm" className="w-full justify-center">
+              Join the network
+              <ArrowUpRight data-icon="inline-end" />
+            </Button>
+          </>
+        )}
       </div>
     </aside>
   );

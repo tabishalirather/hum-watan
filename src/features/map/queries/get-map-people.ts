@@ -31,7 +31,6 @@ export async function getMapPeople(filters: MapFilters = {}) {
 
   const rows = await db
     .select({
-      userId: users.id,
       name: users.name,
       coordinatorLevel: profiles.coordinatorLevel,
       subject: profiles.subject,
@@ -47,7 +46,8 @@ export async function getMapPeople(filters: MapFilters = {}) {
     .innerJoin(universities, eq(universities.id, profiles.universityId))
     .innerJoin(cities, eq(cities.id, universities.cityId))
     .innerJoin(countries, eq(countries.id, cities.countryId))
-    .where(and(...conditions));
+    .where(and(...conditions))
+    .limit(500);
 
   return rows;
 }

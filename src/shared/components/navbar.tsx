@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
-import { ArrowUpRight, Compass } from "lucide-react";
+import { ArrowUpRight, Compass, Inbox } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 
 export function Navbar() {
@@ -26,8 +26,33 @@ export function Navbar() {
           {status === "authenticated" ? (
             <>
               <span className="mr-2 hidden text-sm text-muted-foreground sm:block">
-                {session.user?.name}
+                <span className="block">{session.user?.name}</span>
+                {session.user?.role === "mentor" && (
+                  <span
+                    className={
+                      session.user.verified
+                        ? "block text-[10px] font-medium text-emerald-700"
+                        : "block text-[10px] font-medium text-amber-700"
+                    }
+                  >
+                    {session.user.verified ? "Verified mentor" : "Pending verification"}
+                  </span>
+                )}
               </span>
+              {session.user?.role === "mentor" && session.user.verified && (
+                <Button
+                  render={<Link href="/requests" />}
+                  nativeButton={false}
+                  variant="ghost"
+                  size="sm"
+                >
+                  <Inbox />
+                  Requests
+                  <span className="flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+                    {session.user.pendingReferralCount}
+                  </span>
+                </Button>
+              )}
               <Button
                 render={<Link href="/profile" />}
                 nativeButton={false}

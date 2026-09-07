@@ -8,10 +8,11 @@ import { users } from "@/db/schema/auth";
 import { profiles } from "@/db/schema/profiles";
 import { mentorReferrals } from "@/db/schema/referrals";
 import { mentorRegisterSchema, type MentorRegisterInput } from "@/features/auth/validators/auth-schema";
-import { sendMail } from "@/lib/mailer";
 
 export async function registerMentor(input: MentorRegisterInput) {
-  const data = mentorRegisterSchema.parse(input);
+  const parsed = mentorRegisterSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid registration details." };
+  const data = parsed.data;
 
   const existing = await db.query.users.findFirst({ where: eq(users.email, data.email) });
   if (existing) {
@@ -30,28 +31,29 @@ export async function registerMentor(input: MentorRegisterInput) {
   }
 
   const passwordHash = await bcrypt.hash(data.password, 10);
-
-  const [user] = await db
-    .insert(users)
-    .values({ name: data.name, email: data.email, passwordHash })
-    .returning();
-
-  await db.insert(profiles).values({ userId: user.id, role: "mentor", verified: false });
-
+  // Future-only fallback token: email delivery will be re-enabled after a
+  // verified sending domain is configured.
   const token = randomUUID();
-  await db.insert(mentorReferrals).values({
-    mentorUserId: user.id,
-    refereeEmail: data.refereeEmail,
-    refereeUserId: referee.id,
-    token,
-  });
 
-  const confirmUrl = `${process.env.NEXT_PUBLIC_APP_URL}/referrals/confirm?token=${token}`;
-  await sendMail(
-    data.refereeEmail,
-    "Confirm mentor nomination",
-    `${data.name} listed you as their referee. Confirm this nomination: ${confirmUrl}`,
-  );
+  try {
+    await db.transaction(async (tx) => {
+      const [user] = await tx
+        .insert(users)
+        .values({ name: data.name, email: data.email, passwordHash })
+        .returning();
+
+      await tx.insert(profiles).values({ userId: user.id, role: "mentor", verified: false });
+      await tx.insert(mentorReferrals).values({
+        mentorUserId: user.id,
+        refereeEmail: data.refereeEmail,
+        refereeUserId: referee.id,
+        token,
+      });
+    });
+  } catch (error) {
+    console.error("Failed to create mentor referral", error);
+    return { error: "We could not create your mentor account. Please try again later." };
+  }
 
   return { success: true };
 }

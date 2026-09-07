@@ -34,8 +34,9 @@ export function MentorRegisterForm() {
   if (success) {
     return (
       <p className="text-sm text-muted-foreground">
-        Account created. Your referee has been emailed to confirm the nomination — you can sign
-        in once they&apos;ve confirmed.
+        Account created. Your referee can review your nomination from their Hum Watan profile.
+        You can sign in now, but your mentor account will remain unverified and hidden from the
+        map until they approve it.
       </p>
     );
   }

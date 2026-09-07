@@ -8,7 +8,9 @@ import { profiles } from "@/db/schema/profiles";
 import { menteeRegisterSchema, type MenteeRegisterInput } from "@/features/auth/validators/auth-schema";
 
 export async function registerMentee(input: MenteeRegisterInput) {
-  const data = menteeRegisterSchema.parse(input);
+  const parsed = menteeRegisterSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid registration details." };
+  const data = parsed.data;
 
   const existing = await db.query.users.findFirst({ where: eq(users.email, data.email) });
   if (existing) {
@@ -17,12 +19,14 @@ export async function registerMentee(input: MenteeRegisterInput) {
 
   const passwordHash = await bcrypt.hash(data.password, 10);
 
-  const [user] = await db
-    .insert(users)
-    .values({ name: data.name, email: data.email, passwordHash })
-    .returning();
+  await db.transaction(async (tx) => {
+    const [user] = await tx
+      .insert(users)
+      .values({ name: data.name, email: data.email, passwordHash })
+      .returning();
 
-  await db.insert(profiles).values({ userId: user.id, role: "mentee", verified: true });
+    await tx.insert(profiles).values({ userId: user.id, role: "mentee", verified: true });
+  });
 
   return { success: true };
 }

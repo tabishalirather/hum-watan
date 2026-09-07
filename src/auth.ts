@@ -2,10 +2,11 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { users, accounts, sessions, verificationTokens } from "@/db/schema/auth";
 import { profiles } from "@/db/schema/profiles";
+import { mentorReferrals } from "@/db/schema/referrals";
 import { loginSchema } from "@/features/auth/validators/auth-schema";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -45,17 +46,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     jwt: async ({ token, user }) => {
       if (user?.id) {
         token.sub = user.id;
+      }
+
+      if (token.sub) {
         const profile = await db.query.profiles.findFirst({
-          where: eq(profiles.userId, user.id),
+          where: eq(profiles.userId, token.sub),
         });
         token.role = profile?.role ?? "mentee";
+        token.verified = Boolean(profile?.verified);
+
+        const [{ pendingReferralCount }] = await db
+          .select({ pendingReferralCount: count() })
+          .from(mentorReferrals)
+          .where(
+            and(
+              eq(mentorReferrals.refereeUserId, token.sub),
+              eq(mentorReferrals.status, "pending"),
+            ),
+          );
+        token.pendingReferralCount = pendingReferralCount;
       }
+
       return token;
     },
     session: ({ session, token }) => {
       if (session.user) {
         session.user.id = token.sub as string;
         session.user.role = token.role as "mentee" | "mentor" | "admin";
+        session.user.verified = Boolean(token.verified);
+        session.user.pendingReferralCount = Number(token.pendingReferralCount ?? 0);
       }
       return session;
     },

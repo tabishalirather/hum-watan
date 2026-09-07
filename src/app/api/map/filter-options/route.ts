@@ -1,7 +1,16 @@
 import { NextResponse } from "next/server";
 import { getFilterOptions } from "@/features/map/queries/get-filter-options";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const rateLimit = checkRateLimit(`map-filter-options:${getClientIp(request)}`, 30, 60_000);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many filter-option requests. Please try again shortly." },
+      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter) } },
+    );
+  }
+
   const options = await getFilterOptions();
   return NextResponse.json(options);
 }

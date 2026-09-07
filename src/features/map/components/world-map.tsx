@@ -136,14 +136,30 @@ export function WorldMap({
       el.style.background = MARKER_COLOR;
       el.style.cursor = "pointer";
 
-      const popup = new maplibregl.Popup({ offset: 12 }).setHTML(
-        `<div style="font-size:13px;line-height:1.4">
-          <strong>${person.name ?? "Anonymous"}</strong><br/>
-          ${isCoordinator ? `${person.coordinatorLevel} coordinator<br/>` : ""}
-          ${person.subject ?? ""} ${person.degreeLevel ? `(${person.degreeLevel})` : ""}<br/>
-          ${person.universityName}, ${person.cityName}, ${person.countryName}
-        </div>`,
+      const popupContent = document.createElement("div");
+      popupContent.style.fontSize = "13px";
+      popupContent.style.lineHeight = "1.4";
+
+      const name = document.createElement("strong");
+      name.textContent = person.name ?? "Anonymous";
+      popupContent.append(name, document.createElement("br"));
+
+      if (isCoordinator) {
+        popupContent.append(
+          document.createTextNode(`${person.coordinatorLevel} coordinator`),
+          document.createElement("br"),
+        );
+      }
+
+      popupContent.append(
+        document.createTextNode(
+          `${person.subject ?? ""} ${person.degreeLevel ? `(${person.degreeLevel})` : ""}`,
+        ),
+        document.createElement("br"),
+        document.createTextNode(`${person.universityName}, ${person.cityName}, ${person.countryName}`),
       );
+
+      const popup = new maplibregl.Popup({ offset: 12 }).setDOMContent(popupContent);
 
       const marker = new maplibregl.Marker({ element: el })
         .setLngLat([person.lng, person.lat])

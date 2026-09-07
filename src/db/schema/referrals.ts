@@ -19,5 +19,6 @@ export const mentorReferrals = pgTable("mentor_referrals", {
   status: referralStatusEnum("status").notNull().default("pending"),
   token: text("token").notNull().unique(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
   confirmedAt: timestamp("confirmed_at"),
 });
