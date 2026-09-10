@@ -8,6 +8,7 @@ import { MapFilters } from "@/features/map/components/map-filters";
 import { WorldMap, type ChatRequestStatus } from "@/features/map/components/world-map";
 import type { MapFilters as MapFiltersState, MapPerson } from "@/features/map/queries/get-map-people";
 import { sendChatRequest } from "@/features/chat-requests/actions/send-chat-request";
+import type { SiteContent } from "@/features/site-content/lib/site-content";
 
 // Each array-valued filter is a plural key client-side (matches the
 // multi-select UI) but is sent as a repeated singular query param, since
@@ -56,7 +57,13 @@ async function fetchFilterOptions() {
   }>;
 }
 
-export function MapView() {
+export function MapView({
+  contactRequestMessageEnabled = false,
+  content,
+}: {
+  contactRequestMessageEnabled?: boolean;
+  content: SiteContent;
+}) {
   const [filters, setFilters] = useState<MapFiltersState>({});
   const { data: session } = useSession();
   const queryClient = useQueryClient();
@@ -86,8 +93,8 @@ export function MapView() {
   }, [myChatRequestsQuery.data]);
 
   const handleRequestContact = useCallback(
-    async (mentorUserId: string) => {
-      const result = await sendChatRequest({ mentorUserId });
+    async (mentorUserId: string, message?: string) => {
+      const result = await sendChatRequest({ mentorUserId, message });
       if (result.success) {
         queryClient.invalidateQueries({ queryKey: ["my-chat-requests"] });
       }
@@ -99,9 +106,17 @@ export function MapView() {
   const contact = useMemo(
     () =>
       session?.user?.id
-        ? { canRequest: true, viewerUserId: session.user.id, statusByMentorId, onRequestContact: handleRequestContact }
+        ? {
+          canRequest: true,
+          viewerUserId: session.user.id,
+          statusByMentorId,
+          contactRequestMessageEnabled,
+            contactRequestGuidance: content.contactRequestGuidance,
+            contactRequestExamples: content.contactRequestExamples,
+          onRequestContact: handleRequestContact,
+          }
         : undefined,
-    [session, statusByMentorId, handleRequestContact],
+      [session, statusByMentorId, contactRequestMessageEnabled, content, handleRequestContact],
   );
 
   // Pan/zoom to frame whatever the active filters currently show. With no
@@ -122,10 +137,10 @@ export function MapView() {
             Global directory
           </div>
           <h1 className="max-w-xl text-4xl font-semibold leading-[1.05] tracking-[-0.04em] text-foreground sm:text-5xl">
-            Panin Kashir community, mapped.
+            {content.homepageTitle}
           </h1>
           <p className="max-w-xl text-base leading-7 text-muted-foreground">
-            Browse verified Kashir mentors by university, field, and city.
+            {content.homepageDescription}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-5 rounded-2xl border border-border/80 bg-card/70 px-4 py-3 shadow-sm backdrop-blur-sm">

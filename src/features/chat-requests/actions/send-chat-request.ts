@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { users } from "@/db/schema/auth";
 import { profiles } from "@/db/schema/profiles";
 import { chatRequests } from "@/db/schema/chat-requests";
+import { siteSettings } from "@/db/schema/site-settings";
 import { sendChatRequestSchema } from "@/features/chat-requests/validators/chat-request-schema";
 
 export async function sendChatRequest(input: { mentorUserId: string; message?: string }) {
@@ -56,10 +57,12 @@ export async function sendChatRequest(input: { mentorUserId: string; message?: s
     };
   }
 
+  const [settings] = await db.select().from(siteSettings).where(eq(siteSettings.id, 1));
+
   await db.insert(chatRequests).values({
     requesterUserId: session.user.id,
     recipientUserId,
-    message: message || null,
+    message: settings?.contactRequestMessageEnabled ? message || null : null,
   });
 
   return { success: true };

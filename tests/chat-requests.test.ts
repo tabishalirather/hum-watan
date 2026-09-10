@@ -3,7 +3,7 @@ import { sendChatRequest } from '@/features/chat-requests/actions/send-chat-requ
 import { reviewChatRequest } from '@/features/chat-requests/actions/review-chat-request';
 import { cancelChatRequest } from '@/features/chat-requests/actions/cancel-chat-request';
 import { db } from '@/db/client';
-import { auditEvents } from '@/db/schema';
+import { auditEvents, siteSettings } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import {
   createTestUser,
@@ -104,6 +104,7 @@ describe('sendChatRequest', () => {
   });
 
   it('should create a pending request for a valid target', async () => {
+    await db.insert(siteSettings).values({ id: 1, contactRequestMessageEnabled: true });
     const result = await sendChatRequest({ mentorUserId, message: 'Hi there' });
 
     expect('success' in result && result.success).toBe(true);
@@ -114,6 +115,17 @@ describe('sendChatRequest', () => {
     );
     expect(request?.status).toBe('pending');
     expect(request?.message).toBe('Hi there');
+  });
+
+  it('should omit the optional first message when the setting is disabled', async () => {
+    const result = await sendChatRequest({ mentorUserId, message: 'This should not be stored' });
+
+    expect('success' in result && result.success).toBe(true);
+    const rows = await db.query.chatRequests.findMany();
+    const request = rows.find(
+      (r) => r.requesterUserId === menteeUserId && r.recipientUserId === mentorUserId,
+    );
+    expect(request?.message).toBeNull();
   });
 
   it('should prevent a duplicate pending request to the same mentor', async () => {

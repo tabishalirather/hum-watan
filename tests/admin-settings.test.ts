@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { siteSettings } from '@/db/schema';
-import { setMenteeMessageRateLimit } from '@/features/admin/actions/admin-actions';
+import {
+  setContactRequestMessageEnabled,
+  setMenteeMessageRateLimit,
+  updateSiteContent,
+} from '@/features/admin/actions/admin-actions';
 import { createTestProfile, createTestUser } from './fixtures';
 
 const { mockAuth } = vi.hoisted(() => ({ mockAuth: vi.fn() }));
@@ -43,5 +47,29 @@ describe('admin message settings', () => {
     const result = await setMenteeMessageRateLimit(true);
 
     expect(result.error).toContain('Only administrators');
+  });
+
+  it('persists the contact-request first-message toggle', async () => {
+    expect((await setContactRequestMessageEnabled(true)).success).toBe(true);
+
+    const [enabledSettings] = await db
+      .select()
+      .from(siteSettings)
+      .where(eq(siteSettings.id, 1));
+    expect(enabledSettings?.contactRequestMessageEnabled).toBe(true);
+  });
+
+  it('persists editable homepage and contact-request content', async () => {
+    const result = await updateSiteContent({
+      homepageTitle: 'A better headline',
+      homepageDescription: 'A better description',
+      contactRequestGuidance: 'Introduce yourself and ask one clear question.',
+      contactRequestExamples: 'Hi, I am looking for advice about my application.',
+    });
+
+    expect(result.success).toBe(true);
+    const [content] = await db.select().from(siteSettings).where(eq(siteSettings.id, 1));
+    expect(content?.homepageTitle).toBe('A better headline');
+    expect(content?.contactRequestExamples).toContain('looking for advice');
   });
 });

@@ -90,7 +90,10 @@ type ContactAction = {
   canRequest: boolean;
   viewerUserId: string;
   statusByMentorId: Map<string, ChatRequestStatus>;
-  onRequestContact: (mentorUserId: string) => Promise<{ success?: boolean; error?: string }>;
+  onRequestContact: (mentorUserId: string, message?: string) => Promise<{ success?: boolean; error?: string }>;
+  contactRequestMessageEnabled?: boolean;
+  contactRequestGuidance?: string;
+  contactRequestExamples?: string;
 };
 
 // Every mentor at the same university shares that university's single
@@ -181,7 +184,16 @@ function buildPersonRow(person: MapPerson, contact: ContactAction | undefined) {
 
     button.addEventListener("click", async () => {
       setState("Sending…", true, "#e4e4e7");
-      const result = await contact.onRequestContact(mentorUserId);
+      let message: string | undefined;
+      if (contact.contactRequestMessageEnabled) {
+        const prompt = [
+          contact.contactRequestGuidance ?? "Write an optional introduction for the mentor:",
+          contact.contactRequestExamples ? `Examples:\n${contact.contactRequestExamples}` : "",
+          "Write your optional introduction below:",
+        ].filter(Boolean).join("\n\n");
+        message = window.prompt(prompt) ?? undefined;
+      }
+      const result = await contact.onRequestContact(mentorUserId, message);
       if (result.error) {
         setState("Request contact", false, MARKER_COLOR);
         window.alert(result.error);

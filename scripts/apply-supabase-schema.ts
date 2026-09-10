@@ -75,9 +75,19 @@ async function main() {
     await sql`
       CREATE TABLE IF NOT EXISTS site_settings (
         id integer PRIMARY KEY DEFAULT 1 CHECK (id = 1),
-        mentee_message_rate_limit_enabled boolean NOT NULL DEFAULT false
+        mentee_message_rate_limit_enabled boolean NOT NULL DEFAULT false,
+        contact_request_message_enabled boolean NOT NULL DEFAULT false,
+        homepage_title text,
+        homepage_description text,
+        contact_request_guidance text,
+        contact_request_examples text
       );
     `;
+    await sql`ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS contact_request_message_enabled boolean NOT NULL DEFAULT false;`;
+    await sql`ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS homepage_title text;`;
+    await sql`ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS homepage_description text;`;
+    await sql`ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS contact_request_guidance text;`;
+    await sql`ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS contact_request_examples text;`;
     await sql`
       INSERT INTO site_settings (id, mentee_message_rate_limit_enabled)
       VALUES (1, false)

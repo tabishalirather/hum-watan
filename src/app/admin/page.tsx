@@ -5,6 +5,9 @@ import { getAdminUserId } from "@/features/admin/lib/require-admin";
 import { AdminDashboardCharts } from "@/features/admin/components/admin-dashboard-charts";
 import { CountryDistributionChart } from "@/features/admin/components/country-distribution-chart";
 import { MenteeMessageRateLimitToggle } from "@/features/admin/components/mentee-message-rate-limit-toggle";
+import { ContactRequestMessageToggle } from "@/features/admin/components/contact-request-message-toggle";
+import { SiteContentEditor } from "@/features/admin/components/site-content-editor";
+import { getSiteContent } from "@/features/site-content/lib/site-content";
 import { siteSettings } from "@/db/schema/site-settings";
 import { db } from "@/db/client";
 import { eq } from "drizzle-orm";
@@ -16,6 +19,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 	const { q = "" } = await searchParams;
 	const { referrals, accounts, auditHistory } = await getAdminDashboard(q);
 	const [settings] = await db.select().from(siteSettings).where(eq(siteSettings.id, 1));
+	const siteContent = getSiteContent(settings);
 	const pendingCount = referrals.filter((referral) => referral.status === "pending").length;
 	const verifiedCount = accounts.filter((account) => account.verified).length;
 	const inactiveCount = accounts.filter((account) => !account.isActive).length;
@@ -42,6 +46,15 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 					<p className="text-sm text-muted-foreground">Control messaging limits for mentee conversations.</p>
 				</div>
 				<MenteeMessageRateLimitToggle enabled={settings?.menteeMessageRateLimitEnabled ?? false} />
+				<ContactRequestMessageToggle enabled={settings?.contactRequestMessageEnabled ?? false} />
+			</section>
+
+			<section className="space-y-4">
+				<div>
+					<h2 className="text-xl font-semibold">Site content</h2>
+					<p className="text-sm text-muted-foreground">Edit copy shown on the homepage and in contact requests.</p>
+				</div>
+				<SiteContentEditor initialContent={siteContent} />
 			</section>
 
 			<section className="space-y-4">

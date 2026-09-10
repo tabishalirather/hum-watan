@@ -12,6 +12,12 @@ import { getAdminUserId } from "@/features/admin/lib/require-admin";
 import { getAdminEmailPolicyError } from "@/features/admin/lib/admin-email-policy";
 
 const reasonSchema = z.string().trim().min(3, "A reason is required.").max(500);
+const siteContentSchema = z.object({
+  homepageTitle: z.string().trim().min(1).max(160),
+  homepageDescription: z.string().trim().min(1).max(500),
+  contactRequestGuidance: z.string().trim().min(1).max(2000),
+  contactRequestExamples: z.string().trim().min(1).max(4000),
+});
 
 export async function promoteUserToAdmin(userId: string, reason: string) {
   const adminUserId = await getAdminUserId();
@@ -167,6 +173,44 @@ export async function setMenteeMessageRateLimit(enabled: boolean) {
       target: siteSettings.id,
       set: { menteeMessageRateLimitEnabled: enabled },
     });
+
+  return { success: true };
+}
+
+export async function setContactRequestMessageEnabled(enabled: boolean) {
+  const adminUserId = await getAdminUserId();
+  if (!adminUserId) return { error: "Only administrators can manage contact settings." };
+
+  await db
+    .insert(siteSettings)
+    .values({ id: 1, contactRequestMessageEnabled: enabled })
+    .onConflictDoUpdate({
+      target: siteSettings.id,
+      set: { contactRequestMessageEnabled: enabled },
+    });
+
+  return { success: true };
+}
+
+export async function updateSiteContent(input: z.input<typeof siteContentSchema>) {
+  const adminUserId = await getAdminUserId();
+  if (!adminUserId) return { error: "Only administrators can edit site content." };
+
+  const parsed = siteContentSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid site content." };
+
+  await db.transaction(async (tx) => {
+    await tx
+      .insert(siteSettings)
+      .values({ id: 1, ...parsed.data })
+      .onConflictDoUpdate({ target: siteSettings.id, set: parsed.data });
+    await tx.insert(auditEvents).values({
+      actorUserId: adminUserId,
+      action: "site_content_updated",
+      entityType: "site_settings",
+      metadata: { fields: Object.keys(parsed.data) },
+    });
+  });
 
   return { success: true };
 }
