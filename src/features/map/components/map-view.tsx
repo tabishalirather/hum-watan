@@ -39,7 +39,7 @@ async function fetchPeople(filters: MapFiltersState): Promise<MapPerson[]> {
 }
 
 async function fetchMyChatRequests(): Promise<
-  { id: string; mentorUserId: string; status: ChatRequestStatus }[]
+  { id: string; recipientUserId: string; status: ChatRequestStatus }[]
 > {
   const res = await fetch("/api/chat-requests/mine");
   if (!res.ok) return [];
@@ -60,7 +60,10 @@ export function MapView() {
   const [filters, setFilters] = useState<MapFiltersState>({});
   const { data: session } = useSession();
   const queryClient = useQueryClient();
-  const isMentee = session?.user?.role === "mentee";
+  // Anyone signed in - mentee, mentor, or admin - can request contact with a
+  // mentor on the map (mentors can network with each other too). A mentor
+  // just won't see the button on their own marker (guarded in WorldMap).
+  const canSendRequests = Boolean(session?.user?.id);
 
   const optionsQuery = useQuery({ queryKey: ["map-filter-options"], queryFn: fetchFilterOptions });
   const peopleQuery = useQuery({
@@ -71,13 +74,13 @@ export function MapView() {
   const myChatRequestsQuery = useQuery({
     queryKey: ["my-chat-requests"],
     queryFn: fetchMyChatRequests,
-    enabled: isMentee,
+    enabled: canSendRequests,
   });
 
   const statusByMentorId = useMemo(() => {
     const map = new Map<string, ChatRequestStatus>();
     for (const request of myChatRequestsQuery.data ?? []) {
-      map.set(request.mentorUserId, request.status);
+      map.set(request.recipientUserId, request.status);
     }
     return map;
   }, [myChatRequestsQuery.data]);
@@ -94,8 +97,11 @@ export function MapView() {
   );
 
   const contact = useMemo(
-    () => (isMentee ? { canRequest: true, statusByMentorId, onRequestContact: handleRequestContact } : undefined),
-    [isMentee, statusByMentorId, handleRequestContact],
+    () =>
+      session?.user?.id
+        ? { canRequest: true, viewerUserId: session.user.id, statusByMentorId, onRequestContact: handleRequestContact }
+        : undefined,
+    [session, statusByMentorId, handleRequestContact],
   );
 
   // Pan/zoom to frame whatever the active filters currently show. With no

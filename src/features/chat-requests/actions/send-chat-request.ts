@@ -14,32 +14,36 @@ export async function sendChatRequest(input: { mentorUserId: string; message?: s
 
   const parsed = sendChatRequestSchema.safeParse(input);
   if (!parsed.success) return { error: "Invalid request." };
-  const { mentorUserId, message } = parsed.data;
+  const { mentorUserId: recipientUserId, message } = parsed.data;
 
-  const menteeProfile = await db.query.profiles.findFirst({
-    where: and(eq(profiles.userId, session.user.id), eq(profiles.role, "mentee")),
+  if (recipientUserId === session.user.id) {
+    return { error: "You can't send a chat request to yourself." };
+  }
+
+  const requesterProfile = await db.query.profiles.findFirst({
+    where: eq(profiles.userId, session.user.id),
   });
-  if (!menteeProfile) return { error: "Only mentees can request contact with a mentor." };
+  if (!requesterProfile) return { error: "Complete your profile before requesting contact." };
 
-  const mentor = await db.query.profiles.findFirst({
+  const recipientProfile = await db.query.profiles.findFirst({
     where: and(
-      eq(profiles.userId, mentorUserId),
+      eq(profiles.userId, recipientUserId),
       eq(profiles.role, "mentor"),
       eq(profiles.verified, true),
       eq(profiles.visibleOnMap, true),
     ),
   });
-  const mentorUser = mentor
-    ? await db.query.users.findFirst({ where: eq(users.id, mentorUserId) })
+  const recipientUser = recipientProfile
+    ? await db.query.users.findFirst({ where: eq(users.id, recipientUserId) })
     : null;
-  if (!mentor || !mentorUser?.isActive) {
+  if (!recipientProfile || !recipientUser?.isActive) {
     return { error: "This mentor is not available to contact right now." };
   }
 
   const existing = await db.query.chatRequests.findFirst({
     where: and(
-      eq(chatRequests.menteeUserId, session.user.id),
-      eq(chatRequests.mentorUserId, mentorUserId),
+      eq(chatRequests.requesterUserId, session.user.id),
+      eq(chatRequests.recipientUserId, recipientUserId),
       inArray(chatRequests.status, ["pending", "accepted"]),
     ),
   });
@@ -53,8 +57,8 @@ export async function sendChatRequest(input: { mentorUserId: string; message?: s
   }
 
   await db.insert(chatRequests).values({
-    menteeUserId: session.user.id,
-    mentorUserId,
+    requesterUserId: session.user.id,
+    recipientUserId,
     message: message || null,
   });
 

@@ -16,7 +16,7 @@ export async function reviewChatRequest(requestId: string, decision: "accepted" 
     .where(
       and(
         eq(chatRequests.id, requestId),
-        eq(chatRequests.mentorUserId, session.user.id),
+        eq(chatRequests.recipientUserId, session.user.id),
         eq(chatRequests.status, "pending"),
       ),
     )

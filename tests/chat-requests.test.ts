@@ -30,7 +30,7 @@ describe('sendChatRequest', () => {
     mentorUserId = mentor.userId;
     await createTestProfile({ userId: mentorUserId, role: 'mentor', verified: true, visibleOnMap: true });
 
-    mockAuth.mockResolvedValue({ user: { id: menteeUserId } } as any);
+    mockAuth.mockResolvedValue({ user: { id: menteeUserId } });
   });
 
   it('should reject if user is not signed in', async () => {
@@ -41,14 +41,31 @@ describe('sendChatRequest', () => {
     expect('error' in result && result.error).toContain('must be signed in');
   });
 
-  it('should reject if sender is not a mentee', async () => {
-    const { userId: otherMentorId } = await createTestUser({ email: 'notmentee@example.com' });
-    await createTestProfile({ userId: otherMentorId, role: 'mentor', verified: true });
-    mockAuth.mockResolvedValue({ user: { id: otherMentorId } } as any);
+  it('should allow a mentor to send a request to another mentor', async () => {
+    const { userId: requestingMentorId } = await createTestUser({ email: 'requesting-mentor@example.com' });
+    await createTestProfile({ userId: requestingMentorId, role: 'mentor', verified: true });
+    mockAuth.mockResolvedValue({ user: { id: requestingMentorId } });
 
     const result = await sendChatRequest({ mentorUserId });
 
-    expect('error' in result && result.error).toContain('Only mentees');
+    expect('success' in result && result.success).toBe(true);
+  });
+
+  it('should reject a sender with no profile', async () => {
+    const { userId: noProfileId } = await createTestUser({ email: 'no-profile@example.com' });
+    mockAuth.mockResolvedValue({ user: { id: noProfileId } });
+
+    const result = await sendChatRequest({ mentorUserId });
+
+    expect('error' in result && result.error).toContain('Complete your profile');
+  });
+
+  it('should reject a request to yourself', async () => {
+    mockAuth.mockResolvedValue({ user: { id: mentorUserId } });
+
+    const result = await sendChatRequest({ mentorUserId });
+
+    expect('error' in result && result.error).toContain('yourself');
   });
 
   it('should reject an unverified mentor', async () => {
@@ -93,14 +110,14 @@ describe('sendChatRequest', () => {
 
     const rows = await db.query.chatRequests.findMany();
     const request = rows.find(
-      (r) => r.menteeUserId === menteeUserId && r.mentorUserId === mentorUserId,
+      (r) => r.requesterUserId === menteeUserId && r.recipientUserId === mentorUserId,
     );
     expect(request?.status).toBe('pending');
     expect(request?.message).toBe('Hi there');
   });
 
   it('should prevent a duplicate pending request to the same mentor', async () => {
-    await createTestChatRequest({ menteeUserId, mentorUserId, status: 'pending' });
+    await createTestChatRequest({ requesterUserId: menteeUserId, recipientUserId: mentorUserId, status: 'pending' });
 
     const result = await sendChatRequest({ mentorUserId });
 
@@ -108,7 +125,7 @@ describe('sendChatRequest', () => {
   });
 
   it('should prevent requesting a mentor already accepted', async () => {
-    await createTestChatRequest({ menteeUserId, mentorUserId, status: 'accepted' });
+    await createTestChatRequest({ requesterUserId: menteeUserId, recipientUserId: mentorUserId, status: 'accepted' });
 
     const result = await sendChatRequest({ mentorUserId });
 
@@ -116,7 +133,7 @@ describe('sendChatRequest', () => {
   });
 
   it('should allow re-requesting after a rejection', async () => {
-    await createTestChatRequest({ menteeUserId, mentorUserId, status: 'rejected' });
+    await createTestChatRequest({ requesterUserId: menteeUserId, recipientUserId: mentorUserId, status: 'rejected' });
 
     const result = await sendChatRequest({ mentorUserId });
 
@@ -138,10 +155,10 @@ describe('reviewChatRequest', () => {
     mentorUserId = mentor.userId;
     await createTestProfile({ userId: mentorUserId, role: 'mentor', verified: true });
 
-    const request = await createTestChatRequest({ menteeUserId, mentorUserId, status: 'pending' });
+    const request = await createTestChatRequest({ requesterUserId: menteeUserId, recipientUserId: mentorUserId, status: 'pending' });
     requestId = request.id;
 
-    mockAuth.mockResolvedValue({ user: { id: mentorUserId } } as any);
+    mockAuth.mockResolvedValue({ user: { id: mentorUserId } });
   });
 
   it('should reject if user is not signed in', async () => {
@@ -154,7 +171,7 @@ describe('reviewChatRequest', () => {
 
   it('should reject review by someone other than the target mentor', async () => {
     const { userId: otherUserId } = await createTestUser({ email: 'other@example.com' });
-    mockAuth.mockResolvedValue({ user: { id: otherUserId } } as any);
+    mockAuth.mockResolvedValue({ user: { id: otherUserId } });
 
     const result = await reviewChatRequest(requestId, 'accepted');
 
@@ -214,10 +231,10 @@ describe('cancelChatRequest', () => {
     mentorUserId = mentor.userId;
     await createTestProfile({ userId: mentorUserId, role: 'mentor', verified: true });
 
-    const request = await createTestChatRequest({ menteeUserId, mentorUserId, status: 'pending' });
+    const request = await createTestChatRequest({ requesterUserId: menteeUserId, recipientUserId: mentorUserId, status: 'pending' });
     requestId = request.id;
 
-    mockAuth.mockResolvedValue({ user: { id: menteeUserId } } as any);
+    mockAuth.mockResolvedValue({ user: { id: menteeUserId } });
   });
 
   it('should let the mentee cancel their own pending request', async () => {
@@ -231,7 +248,7 @@ describe('cancelChatRequest', () => {
 
   it('should prevent cancelling someone else\'s request', async () => {
     const { userId: otherMenteeId } = await createTestUser({ email: 'other-mentee@example.com' });
-    mockAuth.mockResolvedValue({ user: { id: otherMenteeId } } as any);
+    mockAuth.mockResolvedValue({ user: { id: otherMenteeId } });
 
     const result = await cancelChatRequest(requestId);
 

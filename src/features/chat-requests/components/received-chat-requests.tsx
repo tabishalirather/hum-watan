@@ -7,8 +7,8 @@ import { Button } from "@/shared/components/ui/button";
 
 type PendingChatRequest = {
 	id: string;
-	menteeName: string | null;
-	menteeEmail: string;
+	requesterName: string | null;
+	requesterEmail: string;
 	message: string | null;
 	createdAt: Date;
 };
@@ -18,7 +18,7 @@ type ArchivedChatRequest = PendingChatRequest & {
 	reviewedAt: Date | null;
 };
 
-export function ChatRequestApprovals({
+export function ReceivedChatRequests({
 	requests,
 	archivedRequests = [],
 }: {
@@ -49,7 +49,7 @@ export function ChatRequestApprovals({
 			<section className="rounded-xl border border-border/80 bg-card px-4 py-6 text-center">
 				<h2 className="font-semibold">No chat requests yet</h2>
 				<p className="mt-1 text-sm leading-6 text-muted-foreground">
-					Chat requests from mentees will appear here.
+					Requests from mentees and other mentors will appear here.
 				</p>
 			</section>
 		);
@@ -64,8 +64,8 @@ export function ChatRequestApprovals({
 					const isPending = pendingIds.includes(request.id);
 					return (
 						<div key={request.id} className="rounded-lg border border-border/80 bg-card px-3 py-3">
-							<p className="text-sm font-medium">{request.menteeName ?? "Unnamed mentee"}</p>
-							<p className="text-xs text-muted-foreground">{request.menteeEmail}</p>
+							<p className="text-sm font-medium">{request.requesterName ?? "Unnamed user"}</p>
+							<p className="text-xs text-muted-foreground">{request.requesterEmail}</p>
 							{request.message && (
 								<p className="mt-2 text-sm leading-6 text-foreground/90">&ldquo;{request.message}&rdquo;</p>
 							)}
@@ -113,22 +113,12 @@ export function ChatRequestApprovals({
 									className="flex items-center justify-between gap-3 rounded-lg border border-border/80 bg-card px-3 py-2"
 								>
 									<div>
-										<p className="text-sm font-medium">{request.menteeName ?? "Unnamed mentee"}</p>
-										<p className="text-xs text-muted-foreground">{request.menteeEmail}</p>
+										<p className="text-sm font-medium">{request.requesterName ?? "Unnamed user"}</p>
+										<p className="text-xs text-muted-foreground">{request.requesterEmail}</p>
 									</div>
 									<div className="text-right text-xs">
-										<p
-											className={
-												request.status === "accepted"
-													? "font-semibold text-emerald-700"
-													: "font-semibold text-rose-700"
-											}
-										>
-											{request.status === "accepted"
-												? "Accepted"
-												: request.status === "rejected"
-													? "Rejected"
-													: "Cancelled"}
+										<p className="font-semibold text-muted-foreground">
+											{request.status === "rejected" ? "Rejected" : "Cancelled"}
 										</p>
 										{request.reviewedAt && (
 											<p className="text-muted-foreground">{request.reviewedAt.toLocaleDateString()}</p>

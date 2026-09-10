@@ -88,6 +88,7 @@ export type ChatRequestStatus = "pending" | "accepted" | "rejected" | "cancelled
 
 type ContactAction = {
   canRequest: boolean;
+  viewerUserId: string;
   statusByMentorId: Map<string, ChatRequestStatus>;
   onRequestContact: (mentorUserId: string) => Promise<{ success?: boolean; error?: string }>;
 };
@@ -135,7 +136,7 @@ function buildPersonRow(person: MapPerson, contact: ContactAction | undefined) {
     ),
   );
 
-  if (contact?.canRequest && person.mentorUserId) {
+  if (contact?.canRequest && person.mentorUserId && person.mentorUserId !== contact.viewerUserId) {
     const mentorUserId = person.mentorUserId;
     const requestStatus = contact.statusByMentorId.get(mentorUserId);
     const button = document.createElement("button");

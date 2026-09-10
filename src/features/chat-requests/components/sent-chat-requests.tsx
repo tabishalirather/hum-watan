@@ -7,8 +7,8 @@ import { Button } from "@/shared/components/ui/button";
 
 type PendingSentRequest = {
 	id: string;
-	mentorName: string | null;
-	mentorEmail: string;
+	recipientName: string | null;
+	recipientEmail: string;
 	message: string | null;
 	createdAt: Date;
 };
@@ -18,7 +18,7 @@ type ArchivedSentRequest = PendingSentRequest & {
 	reviewedAt: Date | null;
 };
 
-export function MenteeChatRequests({
+export function SentChatRequests({
 	requests,
 	archivedRequests = [],
 }: {
@@ -63,8 +63,8 @@ export function MenteeChatRequests({
 					const isPending = pendingIds.includes(request.id);
 					return (
 						<div key={request.id} className="rounded-lg border border-border/80 bg-card px-3 py-3">
-							<p className="text-sm font-medium">{request.mentorName ?? "Unnamed mentor"}</p>
-							<p className="text-xs text-muted-foreground">{request.mentorEmail}</p>
+							<p className="text-sm font-medium">{request.recipientName ?? "Unnamed mentor"}</p>
+							<p className="text-xs text-muted-foreground">{request.recipientEmail}</p>
 							{request.message && (
 								<p className="mt-2 text-sm leading-6 text-foreground/90">&ldquo;{request.message}&rdquo;</p>
 							)}
@@ -108,8 +108,8 @@ export function MenteeChatRequests({
 									className="flex items-center justify-between gap-3 rounded-lg border border-border/80 bg-card px-3 py-2"
 								>
 									<div>
-										<p className="text-sm font-medium">{request.mentorName ?? "Unnamed mentor"}</p>
-										<p className="text-xs text-muted-foreground">{request.mentorEmail}</p>
+										<p className="text-sm font-medium">{request.recipientName ?? "Unnamed mentor"}</p>
+										<p className="text-xs text-muted-foreground">{request.recipientEmail}</p>
 									</div>
 									<div className="text-right text-xs">
 										<p className="font-semibold text-muted-foreground">

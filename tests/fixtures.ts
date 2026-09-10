@@ -159,16 +159,16 @@ export async function getMentorReferralById(referralId: string) {
 }
 
 export async function createTestChatRequest(options: {
-  menteeUserId: string;
-  mentorUserId: string;
+  requesterUserId: string;
+  recipientUserId: string;
   status?: 'pending' | 'accepted' | 'rejected' | 'cancelled';
   message?: string | null;
 }) {
-  const { menteeUserId, mentorUserId, status = 'pending', message = null } = options;
+  const { requesterUserId, recipientUserId, status = 'pending', message = null } = options;
 
   const result = await db
     .insert(chatRequests)
-    .values({ menteeUserId, mentorUserId, status, message })
+    .values({ requesterUserId, recipientUserId, status, message })
     .returning();
 
   return result[0];

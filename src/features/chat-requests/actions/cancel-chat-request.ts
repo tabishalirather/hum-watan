@@ -15,7 +15,7 @@ export async function cancelChatRequest(requestId: string) {
     .where(
       and(
         eq(chatRequests.id, requestId),
-        eq(chatRequests.menteeUserId, session.user.id),
+        eq(chatRequests.requesterUserId, session.user.id),
         eq(chatRequests.status, "pending"),
       ),
     )

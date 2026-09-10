@@ -3,49 +3,41 @@ import { db } from "@/db/client";
 import { users } from "@/db/schema/auth";
 import { profiles } from "@/db/schema/profiles";
 import { chatRequests } from "@/db/schema/chat-requests";
-import { universities, cities, countries } from "@/db/schema/geo";
 
-// A mentee's accepted connections: the mentors who approved their request.
-export async function getConnectionsForMentee(menteeUserId: string) {
+// Accepted requests this user sent - the other party is always a mentor
+// (the only role listed on the map).
+export async function getConnectionsSent(requesterUserId: string) {
   return db
     .select({
       requestId: chatRequests.id,
-      mentorUserId: chatRequests.mentorUserId,
-      mentorName: users.name,
-      mentorEmail: users.email,
-      subject: profiles.subject,
-      degreeLevel: profiles.degreeLevel,
-      universityName: universities.name,
-      cityName: cities.name,
-      countryName: countries.name,
+      otherUserId: chatRequests.recipientUserId,
+      otherName: users.name,
+      otherEmail: users.email,
+      otherRole: profiles.role,
       connectedAt: chatRequests.reviewedAt,
     })
     .from(chatRequests)
-    .innerJoin(users, eq(users.id, chatRequests.mentorUserId))
-    .innerJoin(profiles, eq(profiles.userId, chatRequests.mentorUserId))
-    .leftJoin(universities, eq(universities.id, profiles.universityId))
-    .leftJoin(cities, eq(cities.id, universities.cityId))
-    .leftJoin(countries, eq(countries.id, cities.countryId))
-    .where(and(eq(chatRequests.menteeUserId, menteeUserId), eq(chatRequests.status, "accepted")))
+    .innerJoin(users, eq(users.id, chatRequests.recipientUserId))
+    .innerJoin(profiles, eq(profiles.userId, chatRequests.recipientUserId))
+    .where(and(eq(chatRequests.requesterUserId, requesterUserId), eq(chatRequests.status, "accepted")))
     .orderBy(desc(chatRequests.reviewedAt));
 }
 
-// A mentor's accepted connections: the mentees whose requests they approved.
-export async function getConnectionsForMentor(mentorUserId: string) {
+// Accepted requests this user received - the other party can be a mentee
+// or another mentor now that mentors can network with each other.
+export async function getConnectionsReceived(recipientUserId: string) {
   return db
     .select({
       requestId: chatRequests.id,
-      menteeUserId: chatRequests.menteeUserId,
-      menteeName: users.name,
-      menteeEmail: users.email,
-      targetPrograms: profiles.targetPrograms,
-      background: profiles.background,
-      helpNeeded: profiles.helpNeeded,
+      otherUserId: chatRequests.requesterUserId,
+      otherName: users.name,
+      otherEmail: users.email,
+      otherRole: profiles.role,
       connectedAt: chatRequests.reviewedAt,
     })
     .from(chatRequests)
-    .innerJoin(users, eq(users.id, chatRequests.menteeUserId))
-    .innerJoin(profiles, eq(profiles.userId, chatRequests.menteeUserId))
-    .where(and(eq(chatRequests.mentorUserId, mentorUserId), eq(chatRequests.status, "accepted")))
+    .innerJoin(users, eq(users.id, chatRequests.requesterUserId))
+    .innerJoin(profiles, eq(profiles.userId, chatRequests.requesterUserId))
+    .where(and(eq(chatRequests.recipientUserId, recipientUserId), eq(chatRequests.status, "accepted")))
     .orderBy(desc(chatRequests.reviewedAt));
 }

@@ -8,14 +8,18 @@ export const chatRequestStatusEnum = pgEnum("chat_request_status", [
   "cancelled",
 ]);
 
+// The requester can be a mentee OR a mentor (mentors can network with each
+// other too) - the recipient is always a mentor, since that's the only role
+// listed on the map. Column names reflect that: neither side implies a
+// fixed role for the requester.
 export const chatRequests = pgTable(
   "chat_requests",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    menteeUserId: uuid("mentee_user_id")
+    requesterUserId: uuid("requester_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    mentorUserId: uuid("mentor_user_id")
+    recipientUserId: uuid("recipient_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     status: chatRequestStatusEnum("status").notNull().default("pending"),
@@ -24,7 +28,7 @@ export const chatRequests = pgTable(
     reviewedAt: timestamp("reviewed_at"),
   },
   (table) => [
-    index("chat_requests_mentor_idx").on(table.mentorUserId, table.status),
-    index("chat_requests_mentee_idx").on(table.menteeUserId, table.status),
+    index("chat_requests_recipient_idx").on(table.recipientUserId, table.status),
+    index("chat_requests_requester_idx").on(table.requesterUserId, table.status),
   ],
 );
