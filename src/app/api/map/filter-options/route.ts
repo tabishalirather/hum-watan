@@ -11,6 +11,11 @@ export async function GET(request: Request) {
     );
   }
 
-  const options = await getFilterOptions();
-  return NextResponse.json(options);
+  try {
+    const options = await getFilterOptions();
+    return NextResponse.json(options);
+  } catch (error) {
+    console.error("Failed to load map filter options:", error);
+    return NextResponse.json({ error: "Failed to load filter options." }, { status: 500 });
+  }
 }

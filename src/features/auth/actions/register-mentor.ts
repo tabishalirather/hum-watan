@@ -2,12 +2,13 @@
 
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { users } from "@/db/schema/auth";
 import { profiles } from "@/db/schema/profiles";
 import { mentorReferrals } from "@/db/schema/referrals";
 import { mentorRegisterSchema, type MentorRegisterInput } from "@/features/auth/validators/auth-schema";
+import { isMentorCapable } from "@/features/auth/lib/roles";
 
 export async function registerMentor(input: MentorRegisterInput) {
   const parsed = mentorRegisterSchema.safeParse(input);
@@ -21,12 +22,10 @@ export async function registerMentor(input: MentorRegisterInput) {
 
   const referee = await db.query.users.findFirst({ where: eq(users.email, data.refereeEmail) });
   const refereeProfile = referee
-    ? await db.query.profiles.findFirst({
-        where: and(eq(profiles.userId, referee.id), eq(profiles.role, "mentor")),
-      })
+    ? await db.query.profiles.findFirst({ where: eq(profiles.userId, referee.id) })
     : undefined;
 
-  if (!referee || !refereeProfile) {
+  if (!referee || !refereeProfile || !isMentorCapable(refereeProfile.role)) {
     return { error: "The referee must already be a registered mentor." };
   }
 

@@ -6,6 +6,12 @@ import { users } from "@/db/schema/auth";
 import { profiles } from "@/db/schema/profiles";
 import { mentorReferrals } from "@/db/schema/referrals";
 import { MentorReferralApprovals } from "@/features/auth/components/mentor-referral-approvals";
+import { isAlwaysVerified, isMentorCapable } from "@/features/auth/lib/roles";
+import { ChatRequestApprovals } from "@/features/chat-requests/components/chat-request-approvals";
+import {
+	getArchivedChatRequestsForMentor,
+	getPendingChatRequestsForMentor,
+} from "@/features/chat-requests/queries/get-chat-requests-for-mentor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 
 export default async function RequestsPage() {
@@ -15,7 +21,8 @@ export default async function RequestsPage() {
 	const profile = await db.query.profiles.findFirst({
 		where: eq(profiles.userId, session.user.id),
 	});
-	if (profile?.role !== "mentor" || !profile.verified) redirect("/profile");
+	const isVerified = isAlwaysVerified(profile?.role) || Boolean(profile?.verified);
+	if (!isMentorCapable(profile?.role) || !isVerified) redirect("/profile");
 
 	const pendingReferrals = await db
 		.select({
@@ -51,6 +58,9 @@ export default async function RequestsPage() {
 			),
 		);
 
+	const pendingChatRequests = await getPendingChatRequestsForMentor(session.user.id);
+	const archivedChatRequests = await getArchivedChatRequestsForMentor(session.user.id);
+
 	return (
 		<main className="mx-auto w-full max-w-2xl px-4 py-10">
 			<div className="mb-8 space-y-2">
@@ -71,6 +81,11 @@ export default async function RequestsPage() {
 					</TabsTrigger>
 					<TabsTrigger value="chat" className="flex-1">
 						Chat requests
+						{pendingChatRequests.length > 0 && (
+							<span className="ml-1 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+								{pendingChatRequests.length}
+							</span>
+						)}
 					</TabsTrigger>
 				</TabsList>
 				<TabsContent value="verification" className="pt-4">
@@ -81,12 +96,7 @@ export default async function RequestsPage() {
 					/>
 				</TabsContent>
 				<TabsContent value="chat" className="pt-4">
-					<section className="rounded-xl border border-border/80 bg-card px-4 py-6 text-center">
-						<h2 className="font-semibold">No chat requests yet</h2>
-						<p className="mt-1 text-sm leading-6 text-muted-foreground">
-							Chat requests from mentees will appear here when messaging is enabled.
-						</p>
-					</section>
+					<ChatRequestApprovals requests={pendingChatRequests} archivedRequests={archivedChatRequests} />
 				</TabsContent>
 			</Tabs>
 		</main>

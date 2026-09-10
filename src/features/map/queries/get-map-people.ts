@@ -33,6 +33,7 @@ export async function getMapPeople(filters: MapFilters = {}) {
 
   const rows = await db
     .select({
+      mentorUserId: profiles.userId,
       name: users.name,
       coordinatorLevel: profiles.coordinatorLevel,
       subject: profiles.subject,

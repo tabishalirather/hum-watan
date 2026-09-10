@@ -8,6 +8,7 @@ import {
   users,
   profiles,
   mentorReferrals,
+  chatRequests,
 } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
@@ -119,6 +120,7 @@ export async function createTestMentorReferral(options: {
 }) {
   const {
     mentorUserId,
+    refereeUserId = null,
     refereeEmail = 'referee@example.com',
     status = 'pending',
     token = randomUUID(),
@@ -128,6 +130,7 @@ export async function createTestMentorReferral(options: {
     .insert(mentorReferrals)
     .values({
       mentorUserId,
+      refereeUserId,
       refereeEmail,
       status,
       token,
@@ -152,5 +155,27 @@ export async function getProfileByUserId(userId: string) {
 export async function getMentorReferralById(referralId: string) {
   return await db.query.mentorReferrals.findFirst({
     where: eq(mentorReferrals.id, referralId),
+  });
+}
+
+export async function createTestChatRequest(options: {
+  menteeUserId: string;
+  mentorUserId: string;
+  status?: 'pending' | 'accepted' | 'rejected' | 'cancelled';
+  message?: string | null;
+}) {
+  const { menteeUserId, mentorUserId, status = 'pending', message = null } = options;
+
+  const result = await db
+    .insert(chatRequests)
+    .values({ menteeUserId, mentorUserId, status, message })
+    .returning();
+
+  return result[0];
+}
+
+export async function getChatRequestById(requestId: string) {
+  return await db.query.chatRequests.findFirst({
+    where: eq(chatRequests.id, requestId),
   });
 }

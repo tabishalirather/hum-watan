@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useCallback, useMemo, useState } from "react";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import { MapPinned, ShieldCheck, Users } from "lucide-react";
 import { MapFilters } from "@/features/map/components/map-filters";
-import { WorldMap } from "@/features/map/components/world-map";
+import { WorldMap, type ChatRequestStatus } from "@/features/map/components/world-map";
 import type { MapFilters as MapFiltersState, MapPerson } from "@/features/map/queries/get-map-people";
+import { sendChatRequest } from "@/features/chat-requests/actions/send-chat-request";
 
 // Each array-valued filter is a plural key client-side (matches the
 // multi-select UI) but is sent as a repeated singular query param, since
@@ -36,6 +38,14 @@ async function fetchPeople(filters: MapFiltersState): Promise<MapPerson[]> {
   return res.json();
 }
 
+async function fetchMyChatRequests(): Promise<
+  { id: string; mentorUserId: string; status: ChatRequestStatus }[]
+> {
+  const res = await fetch("/api/chat-requests/mine");
+  if (!res.ok) return [];
+  return res.json();
+}
+
 async function fetchFilterOptions() {
   const res = await fetch("/api/map/filter-options");
   if (!res.ok) throw new Error("Failed to load filter options");
@@ -48,6 +58,9 @@ async function fetchFilterOptions() {
 
 export function MapView() {
   const [filters, setFilters] = useState<MapFiltersState>({});
+  const { data: session } = useSession();
+  const queryClient = useQueryClient();
+  const isMentee = session?.user?.role === "mentee";
 
   const optionsQuery = useQuery({ queryKey: ["map-filter-options"], queryFn: fetchFilterOptions });
   const peopleQuery = useQuery({
@@ -55,6 +68,35 @@ export function MapView() {
     queryFn: () => fetchPeople(filters),
     placeholderData: keepPreviousData,
   });
+  const myChatRequestsQuery = useQuery({
+    queryKey: ["my-chat-requests"],
+    queryFn: fetchMyChatRequests,
+    enabled: isMentee,
+  });
+
+  const statusByMentorId = useMemo(() => {
+    const map = new Map<string, ChatRequestStatus>();
+    for (const request of myChatRequestsQuery.data ?? []) {
+      map.set(request.mentorUserId, request.status);
+    }
+    return map;
+  }, [myChatRequestsQuery.data]);
+
+  const handleRequestContact = useCallback(
+    async (mentorUserId: string) => {
+      const result = await sendChatRequest({ mentorUserId });
+      if (result.success) {
+        queryClient.invalidateQueries({ queryKey: ["my-chat-requests"] });
+      }
+      return result;
+    },
+    [queryClient],
+  );
+
+  const contact = useMemo(
+    () => (isMentee ? { canRequest: true, statusByMentorId, onRequestContact: handleRequestContact } : undefined),
+    [isMentee, statusByMentorId, handleRequestContact],
+  );
 
   // Pan/zoom to frame whatever the active filters currently show. With no
   // filters active, focusPoints is empty and WorldMap resets to the default
@@ -110,7 +152,12 @@ export function MapView() {
               Loading community...
             </p>
           )}
-          <WorldMap people={peopleQuery.data ?? []} focusPoints={focusPoints} />
+          {peopleQuery.isError && (
+            <p className="absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-full bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground shadow-lg">
+              Couldn&apos;t load the community map. Please try again shortly.
+            </p>
+          )}
+          <WorldMap people={peopleQuery.data ?? []} focusPoints={focusPoints} contact={contact} />
         </div>
       </section>
     </main>

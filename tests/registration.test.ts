@@ -48,7 +48,7 @@ describe('Registration', () => {
         password: 'password456',
       });
 
-      expect(result.success).toBe(false);
+      expect('error' in result).toBe(true);
       expect(result.error).toContain('already exists');
     });
 
@@ -59,7 +59,7 @@ describe('Registration', () => {
         password: 'short', // Less than 8 characters
       });
 
-      expect(result.success).toBe(false);
+      expect('error' in result).toBe(true);
       expect(result.error).toBeDefined();
     });
 
@@ -70,7 +70,7 @@ describe('Registration', () => {
         password: 'password123',
       });
 
-      expect(result.success).toBe(false);
+      expect('error' in result).toBe(true);
       expect(result.error).toBeDefined();
     });
   });
@@ -141,7 +141,7 @@ describe('Registration', () => {
         refereeEmail: 'notmentor@example.com',
       });
 
-      expect(result.success).toBe(false);
+      expect('error' in result).toBe(true);
       expect(result.error).toContain('registered mentor');
     });
 
@@ -153,7 +153,7 @@ describe('Registration', () => {
         refereeEmail: 'nonexistent@example.com',
       });
 
-      expect(result.success).toBe(false);
+      expect('error' in result).toBe(true);
       expect(result.error).toContain('registered mentor');
     });
 
@@ -185,7 +185,7 @@ describe('Registration', () => {
         refereeEmail: 'referee2@example.com',
       });
 
-      expect(result.success).toBe(false);
+      expect('error' in result).toBe(true);
       expect(result.error).toContain('already exists');
     });
   });

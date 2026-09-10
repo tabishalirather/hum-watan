@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { profiles } from "@/db/schema/profiles";
 import { mentorReferrals } from "@/db/schema/referrals";
 import { auditEvents } from "@/db/schema/audit";
+import { isAlwaysVerified, isMentorCapable } from "@/features/auth/lib/roles";
 
 export async function reviewMentorReferral(
   referralId: string,
@@ -15,13 +16,12 @@ export async function reviewMentorReferral(
   if (!session?.user?.id) return { error: "You must be signed in to review referrals." };
 
   const refereeProfile = await db.query.profiles.findFirst({
-    where: and(
-      eq(profiles.userId, session.user.id),
-      eq(profiles.role, "mentor"),
-      eq(profiles.verified, true),
-    ),
+    where: eq(profiles.userId, session.user.id),
   });
-  if (!refereeProfile) return { error: "Only verified mentors can review referrals." };
+  const isVerified = refereeProfile && (isAlwaysVerified(refereeProfile.role) || refereeProfile.verified);
+  if (!refereeProfile || !isMentorCapable(refereeProfile.role) || !isVerified) {
+    return { error: "Only verified mentors can review referrals." };
+  }
 
   return db.transaction(async (tx) => {
     const [referral] = await tx

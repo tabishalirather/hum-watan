@@ -6,12 +6,10 @@ import { eq, and } from 'drizzle-orm';
 import { createTestUser, createTestProfile, createTestMentorReferral, getMentorReferralById } from './fixtures';
 
 // Mock the auth() function
-const mockAuth = vi.fn();
+const { mockAuth } = vi.hoisted(() => ({ mockAuth: vi.fn() }));
 vi.mock('@/auth', () => ({
   auth: mockAuth,
 }));
-
-import * as authModule from '@/auth';
 
 describe('reviewMentorReferral', () => {
   let refereeUserId: string;
@@ -106,6 +104,25 @@ describe('reviewMentorReferral', () => {
     const result = await reviewMentorReferral(referralId, 'confirmed');
 
     expect('error' in result && result.error).toContain('verified mentors');
+  });
+
+  it('should allow an admin referee to confirm a pending referral even if profile.verified is false', async () => {
+    const { userId: adminUserId } = await createTestUser({ email: 'admin-referee@example.com' });
+    await createTestProfile({ userId: adminUserId, role: 'admin', verified: false });
+
+    const referral = await createTestMentorReferral({
+      mentorUserId,
+      refereeUserId: adminUserId,
+      status: 'pending',
+    });
+
+    mockAuth.mockResolvedValue({ user: { id: adminUserId } } as any);
+
+    const result = await reviewMentorReferral(referral.id, 'confirmed');
+
+    expect('success' in result && result.success).toBe(true);
+    const updated = await getMentorReferralById(referral.id);
+    expect(updated?.status).toBe('confirmed');
   });
 
   it('should allow verified mentor to confirm a pending referral', async () => {

@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
-import { ArrowUpRight, Compass, Inbox } from "lucide-react";
+import { ArrowUpRight, Compass, Inbox, Users } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { isMentorCapable } from "@/features/auth/lib/roles";
 
 export function Navbar() {
   const { data: session, status } = useSession();
@@ -27,7 +28,7 @@ export function Navbar() {
             <>
               <span className="mr-2 hidden text-sm text-muted-foreground sm:block">
                 <span className="block">{session.user?.name}</span>
-                {session.user?.role === "mentor" && (
+                {isMentorCapable(session.user?.role) && (
                   <span
                     className={
                       session.user.verified
@@ -39,7 +40,7 @@ export function Navbar() {
                   </span>
                 )}
               </span>
-              {session.user?.role === "mentor" && session.user.verified && (
+              {isMentorCapable(session.user?.role) && session.user.verified && (
                 <Button
                   render={<Link href="/requests" />}
                   nativeButton={false}
@@ -58,6 +59,15 @@ export function Navbar() {
                   Admin
                 </Button>
               )}
+              <Button
+                render={<Link href="/connections" />}
+                nativeButton={false}
+                variant="ghost"
+                size="sm"
+              >
+                <Users />
+                Connections
+              </Button>
               <Button
                 render={<Link href="/profile" />}
                 nativeButton={false}

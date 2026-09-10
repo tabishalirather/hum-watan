@@ -8,6 +8,7 @@ import { users, accounts, sessions, verificationTokens } from "@/db/schema/auth"
 import { profiles } from "@/db/schema/profiles";
 import { mentorReferrals } from "@/db/schema/referrals";
 import { loginSchema } from "@/features/auth/validators/auth-schema";
+import { isAlwaysVerified } from "@/features/auth/lib/roles";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: DrizzleAdapter(db, {
@@ -53,7 +54,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           where: eq(profiles.userId, token.sub),
         });
         token.role = profile?.role ?? "mentee";
-        token.verified = Boolean(profile?.verified);
+        token.verified = isAlwaysVerified(profile?.role) || Boolean(profile?.verified);
 
         const [{ pendingReferralCount }] = await db
           .select({ pendingReferralCount: count() })

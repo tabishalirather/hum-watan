@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { getMapPeople, type MapFilters } from "@/features/map/queries/get-map-people";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
@@ -27,6 +28,29 @@ export async function GET(request: NextRequest) {
     universityIds: params.getAll("universityId"),
   };
 
-  const people = await getMapPeople(filters);
-  return NextResponse.json(people);
+  try {
+    const people = await getMapPeople(filters);
+    const session = await auth();
+    // Anonymous viewers never see who a marker maps to; only signed-in
+    // users (who can act on it, e.g. mentees requesting contact) do.
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        people.map((person) => ({
+          name: person.name,
+          coordinatorLevel: person.coordinatorLevel,
+          subject: person.subject,
+          degreeLevel: person.degreeLevel,
+          universityName: person.universityName,
+          cityName: person.cityName,
+          countryName: person.countryName,
+          lat: person.lat,
+          lng: person.lng,
+        })),
+      );
+    }
+    return NextResponse.json(people);
+  } catch (error) {
+    console.error("Failed to load map people:", error);
+    return NextResponse.json({ error: "Failed to load map data." }, { status: 500 });
+  }
 }
