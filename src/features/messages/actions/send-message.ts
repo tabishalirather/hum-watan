@@ -9,6 +9,7 @@ import { profiles } from "@/db/schema/profiles";
 import { siteSettings } from "@/db/schema/site-settings";
 import { MENTEE_MESSAGE_RATE_LIMIT_ERROR } from "@/features/messages/lib/message-errors";
 import { sendMessageSchema, type SendMessageInput } from "@/features/messages/validators/message-schema";
+import { areUsersBlocked } from "@/features/moderation/queries/get-block-state";
 
 export async function sendMessage(input: SendMessageInput) {
   const session = await auth();
@@ -29,6 +30,12 @@ export async function sendMessage(input: SendMessageInput) {
     ),
   });
   if (!chatRequest) return { error: "This conversation is not available." };
+
+  const otherUserId =
+    chatRequest.requesterUserId === session.user.id ? chatRequest.recipientUserId : chatRequest.requesterUserId;
+  if (await areUsersBlocked(session.user.id, otherUserId)) {
+    return { error: "You cannot send messages in this conversation." };
+  }
 
   const inserted = await db.transaction(async (tx) => {
     // Serialize sends in one thread so two simultaneous requests cannot both

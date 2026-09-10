@@ -8,6 +8,7 @@ import { users } from "@/db/schema/auth";
 import { getChatRequestForParticipant, getMessages } from "@/features/messages/queries/get-messages";
 import { MessageThread } from "@/features/messages/components/message-thread";
 import { messages } from "@/db/schema/messages";
+import { ModerationActions } from "@/features/moderation/components/moderation-actions";
 
 export default async function ChatThreadPage({
 	params,
@@ -54,6 +55,7 @@ export default async function ChatThreadPage({
 				otherPartyName={otherUser?.name ?? "Unnamed user"}
 				initialMessages={initialMessages.map((m) => ({ ...m, createdAt: m.createdAt.toISOString() }))}
 			/>
+			<ModerationActions targetUserId={otherUserId} targetUserName={otherUser?.name ?? "this user"} />
 		</main>
 	);
 }

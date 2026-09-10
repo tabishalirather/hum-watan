@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BadgeCheck, MessageCircle, Settings } from "lucide-react";
 import { auth } from "@/auth";
 import { getPublicProfile } from "@/features/profile/queries/get-public-profile";
+import { ModerationActions } from "@/features/moderation/components/moderation-actions";
 
 function initials(name: string | null) {
 	if (!name) return "?";
@@ -144,6 +145,7 @@ export default async function PublicProfilePage({
 						</>
 					)}
 				</dl>
+				{!profile.isSelf && <ModerationActions targetUserId={profile.userId} targetUserName={profile.name ?? "this user"} />}
 			</div>
 		</main>
 	);

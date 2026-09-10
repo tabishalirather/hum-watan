@@ -1,6 +1,6 @@
-import { and, eq, ilike, inArray } from "drizzle-orm";
+import { and, eq, ilike, inArray, notInArray, or } from "drizzle-orm";
 import { db } from "@/db/client";
-import { profiles, users, universities, cities, countries } from "@/db/schema";
+import { profiles, users, universities, cities, countries, userBlocks } from "@/db/schema";
 
 export type MapFilters = {
   subject?: string;
@@ -10,7 +10,20 @@ export type MapFilters = {
   universityIds?: string[];
 };
 
-export async function getMapPeople(filters: MapFilters = {}) {
+export async function getMapPeople(filters: MapFilters = {}, viewerUserId?: string) {
+  const blockedUserIds = viewerUserId
+    ? await db
+        .select({ blockerUserId: userBlocks.blockerUserId, blockedUserId: userBlocks.blockedUserId })
+        .from(userBlocks)
+        .where(
+          or(eq(userBlocks.blockerUserId, viewerUserId), eq(userBlocks.blockedUserId, viewerUserId)),
+        )
+        .then((rows) =>
+          rows
+            .map((row) => (row.blockerUserId === viewerUserId ? row.blockedUserId : row.blockerUserId))
+            .filter((userId) => userId !== viewerUserId),
+        )
+    : [];
   const conditions = [
     // The map is a directory of mentors to find, not a roster of everyone.
     // Mentees browse it — they're never plotted on it themselves.
@@ -18,6 +31,7 @@ export async function getMapPeople(filters: MapFilters = {}) {
     eq(profiles.verified, true),
     eq(profiles.visibleOnMap, true),
     eq(users.isActive, true),
+    blockedUserIds.length > 0 ? notInArray(profiles.userId, blockedUserIds) : undefined,
     filters.subject ? ilike(profiles.subject, `%${filters.subject}%`) : undefined,
     filters.degreeLevels && filters.degreeLevels.length > 0
       ? inArray(profiles.degreeLevel, filters.degreeLevels)

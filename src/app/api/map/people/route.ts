@@ -29,8 +29,8 @@ export async function GET(request: NextRequest) {
   };
 
   try {
-    const people = await getMapPeople(filters);
     const session = await auth();
+    const people = await getMapPeople(filters, session?.user?.id);
     // Anonymous viewers never see who a marker maps to; only signed-in
     // users (who can act on it, e.g. mentees requesting contact) do.
     if (!session?.user?.id) {

@@ -4,6 +4,7 @@ import { users } from "@/db/schema/auth";
 import { profiles } from "@/db/schema/profiles";
 import { universities, cities, countries } from "@/db/schema/geo";
 import { chatRequests } from "@/db/schema/chat-requests";
+import { areUsersBlocked } from "@/features/moderation/queries/get-block-state";
 
 async function findConnection(viewerId: string, targetId: string) {
   return db.query.chatRequests.findFirst({
@@ -30,6 +31,8 @@ export async function getPublicProfile(targetUserId: string, viewerId: string) {
   if (!user || !user.isActive) return null;
 
   const isSelf = targetUserId === viewerId;
+
+  if (!isSelf && (await areUsersBlocked(viewerId, targetUserId))) return null;
 
   if (target.role === "admin" && !isSelf) return null;
 

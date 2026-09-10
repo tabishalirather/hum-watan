@@ -15,7 +15,7 @@ Tick items with `[x]` as they are completed. Keep implementation details and dec
 - [x] Keep current private profile reads and mutations restricted to the signed-in owner.
 - [x] Audit mentor referral decisions, token confirmations, and profile updates.
 - [ ] Keep future conversation data inaccessible to non-participants.
-- [ ] Add reversible admin controls for important state transitions.
+- [x] Add reversible admin controls for important state transitions.
 
 ## Completed Foundation
 
@@ -106,8 +106,8 @@ Tick items with `[x]` as they are completed. Keep implementation details and dec
 - [ ] Hide deactivated users from the map and requests
 - [ ] Define behavior for deleted users with historical referrals/messages
 - [ ] Add privacy policy and community guidelines
-- [ ] Add a report-user entry point
-- [ ] Add a block-user entry point
+- [x] Add a report-user entry point
+- [x] Add a block-user entry point
 
 ### Operational Hardening
 
@@ -146,7 +146,7 @@ Tick items with `[x]` as they are completed. Keep implementation details and dec
 - [x] Allow mentor to reject a chat request
 - [x] Allow requester to cancel a pending request
 - [x] Authorize every action by participant/recipient ownership
-- [ ] Add block and report actions
+- [x] Add user block and report actions with server-side authorization
 
 ### Conversations
 
@@ -160,8 +160,9 @@ Tick items with `[x]` as they are completed. Keep implementation details and dec
 - [x] Add unread message state (per-thread `read_at`, distinct-thread unread count in nav)
 - [x] Add empty state (no messages yet)
 - [x] Use polling for MVP (4s client-side refetch via React Query)
-- [ ] Add loading/error states beyond the basic fetch failure
-- [ ] Enforce message send rate limits
+- [x] Add loading/error states beyond the basic fetch failure
+- [x] Enforce configurable mentee message send rate limits
+- [x] Add optional first messages to contact requests
 - [ ] Defer realtime sockets until after the core workflow is validated (still deferred, polling in place)
 
 ### Public Profiles (built ahead of schedule, feeds into Chat Requests)
@@ -169,6 +170,7 @@ Tick items with `[x]` as they are completed. Keep implementation details and dec
 - [x] Public profile page at `/people/[userId]`
 - [x] Per-field mentor privacy toggles (`show_university`, `show_city`, `show_bio`) — name and role always shown
 - [x] Linked from map popups and message threads
+- [x] Add report and block controls to public profiles and conversations
 
 ### Suggested Structure
 
@@ -308,9 +310,9 @@ src/db/schema/notifications.ts
 - [x] Deactivate accounts
 - [x] Reactivate accounts
 - [x] Hide profiles from the public map
-- [ ] Review user reports
+- [ ] Review user reports in the admin dashboard
 - [ ] Resolve reports
-- [ ] Block abusive accounts
+- [ ] Block or deactivate abusive accounts from the admin dashboard
 - [ ] Review referral and chat history where authorized
 
 ### Audit History
@@ -318,9 +320,31 @@ src/db/schema/notifications.ts
 - [x] Add audit events table
 - [x] Record admin verification overrides
 - [x] Record account deactivation/reactivation
-- [ ] Record moderation decisions
+- [ ] Record admin moderation decisions
 - [ ] Record report resolution
 - [x] Ensure audit records cannot be edited through normal user actions
+
+### Site Content and Feature Controls
+
+- [x] Add admin-only site settings storage
+- [x] Add admin toggles for mentee message limits and contact-request first messages
+- [x] Add CMS editor for homepage copy
+- [x] Add CMS editor for contact-request guidance and examples
+- [x] Audit site-content updates
+- [ ] Add preview or draft/publish workflow for content changes
+- [ ] Add revision history and rollback for content changes
+
+### User Moderation Foundations
+
+- [x] Add reports schema with reasons, statuses, timestamps, and indexes
+- [x] Add user blocks schema with unique blocker/blocked pairs
+- [x] Add report, block, and unblock server actions
+- [x] Prevent blocked users from new requests and messages
+- [x] Exclude blocked users from map and public-profile reads
+- [x] Add user-facing report and block controls
+- [ ] Add admin report queue and status management
+- [ ] Add admin resolution notes and moderation actions
+- [ ] Add focused report/block integration tests
 
 ### Suggested Structure
 
@@ -399,7 +423,7 @@ src/app/admin/
 2. ~~Implement chat requests and basic messaging.~~ Done — Connections inbox, threaded messaging, polling, unread badges.
 3. Add persistent notifications and unread counts (chat/connections have their own badge; still no general-purpose notifications table/center).
 4. Integrate Cal.com-hosted scheduling.
-5. Build admin and moderation tools (verification management and account moderation already exist — reports/blocking still open).
+5. Finish admin moderation tools (verification management exists; report review, resolutions, and admin enforcement remain open).
 6. Re-enable domain-backed email verification.
 7. Decide and implement SMS only if required.
 8. Complete production deployment hardening.
@@ -412,3 +436,10 @@ src/app/admin/
 - Is SMS required for launch trust? Recommended: defer until the core journey is validated.
 - Will Cal.com use one platform account with mentor event links or separate mentor accounts?
 - Which user/profile fields are public on the map?
+
+## Current Implementation Notes
+
+- The site-content CMS currently edits homepage copy and contact-request guidance/examples from `/admin`.
+- Site settings, CMS fields, reports, and user blocks have idempotent Supabase schema support in `scripts/apply-supabase-schema.ts`.
+- User-facing report/block actions and server-side enforcement are implemented, but the admin report queue and moderation decision UI are still unfinished.
+- The CMS has no draft, preview, revision, or rollback workflow yet.

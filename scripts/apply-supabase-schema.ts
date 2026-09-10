@@ -88,6 +88,48 @@ async function main() {
     await sql`ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS homepage_description text;`;
     await sql`ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS contact_request_guidance text;`;
     await sql`ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS contact_request_examples text;`;
+
+    await sql`
+      DO $$ BEGIN
+        CREATE TYPE report_reason AS ENUM ('harassment','spam','inappropriate_content','scam_or_fraud','privacy_concern','other');
+      EXCEPTION WHEN duplicate_object THEN null;
+      END $$;
+    `;
+    await sql`
+      DO $$ BEGIN
+        CREATE TYPE report_status AS ENUM ('open','reviewed','resolved','dismissed');
+      EXCEPTION WHEN duplicate_object THEN null;
+      END $$;
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS reports (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        reporter_user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        reported_user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        reason report_reason NOT NULL,
+        details text,
+        status report_status NOT NULL DEFAULT 'open',
+        reviewed_by_user_id uuid REFERENCES users(id) ON DELETE SET NULL,
+        reviewed_at timestamp,
+        resolution text,
+        created_at timestamp NOT NULL DEFAULT now(),
+        updated_at timestamp NOT NULL DEFAULT now()
+      );
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS reports_status_idx ON reports (status, created_at);`;
+    await sql`CREATE INDEX IF NOT EXISTS reports_reported_user_idx ON reports (reported_user_id, created_at);`;
+    await sql`CREATE INDEX IF NOT EXISTS reports_reporter_idx ON reports (reporter_user_id, created_at);`;
+    await sql`
+      CREATE TABLE IF NOT EXISTS user_blocks (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        blocker_user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        blocked_user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at timestamp NOT NULL DEFAULT now(),
+        CONSTRAINT user_blocks_pair_unique UNIQUE (blocker_user_id, blocked_user_id)
+      );
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS user_blocks_blocker_idx ON user_blocks (blocker_user_id, created_at);`;
+    await sql`CREATE INDEX IF NOT EXISTS user_blocks_blocked_idx ON user_blocks (blocked_user_id, created_at);`;
     await sql`
       INSERT INTO site_settings (id, mentee_message_rate_limit_enabled)
       VALUES (1, false)

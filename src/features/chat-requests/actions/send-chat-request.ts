@@ -8,6 +8,7 @@ import { profiles } from "@/db/schema/profiles";
 import { chatRequests } from "@/db/schema/chat-requests";
 import { siteSettings } from "@/db/schema/site-settings";
 import { sendChatRequestSchema } from "@/features/chat-requests/validators/chat-request-schema";
+import { areUsersBlocked } from "@/features/moderation/queries/get-block-state";
 
 export async function sendChatRequest(input: { mentorUserId: string; message?: string }) {
   const session = await auth();
@@ -19,6 +20,9 @@ export async function sendChatRequest(input: { mentorUserId: string; message?: s
 
   if (recipientUserId === session.user.id) {
     return { error: "You can't send a chat request to yourself." };
+  }
+  if (await areUsersBlocked(session.user.id, recipientUserId)) {
+    return { error: "You cannot contact this user." };
   }
 
   const requesterProfile = await db.query.profiles.findFirst({
