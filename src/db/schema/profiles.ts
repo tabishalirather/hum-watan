@@ -39,4 +39,12 @@ export const profiles = pgTable("profiles", {
   background: text("background"),
   helpNeeded: text("help_needed"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  connectionsViewedAt: timestamp("connections_viewed_at"),
+  // Per-field visibility on the public profile page (/people/[userId]).
+  // Name and role are never hideable — messaging depends on knowing who
+  // you're talking to. These only apply to mentors, the only role with
+  // these fields.
+  showUniversity: boolean("show_university").notNull().default(true),
+  showCity: boolean("show_city").notNull().default(true),
+  showBio: boolean("show_bio").notNull().default(true),
 });

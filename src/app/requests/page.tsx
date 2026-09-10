@@ -55,7 +55,7 @@ export default async function RequestsPage() {
 	return (
 		<main className="mx-auto w-full max-w-2xl px-4 py-10">
 			<div className="mb-8 space-y-2">
-				<h1 className="text-2xl font-semibold">Mentor requests</h1>
+				<h1 className="text-2xl font-semibold">Verification requests</h1>
 				<p className="text-sm text-muted-foreground">
 					Review mentor nominations assigned to you as their referee.
 				</p>

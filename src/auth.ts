@@ -9,6 +9,7 @@ import { profiles } from "@/db/schema/profiles";
 import { mentorReferrals } from "@/db/schema/referrals";
 import { loginSchema } from "@/features/auth/validators/auth-schema";
 import { isAlwaysVerified } from "@/features/auth/lib/roles";
+import { getUnreadConnectionsCount } from "@/features/chat-requests/queries/get-unread-connections-count";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: DrizzleAdapter(db, {
@@ -66,6 +67,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             ),
           );
         token.pendingReferralCount = pendingReferralCount;
+        const { pendingReceived, newConnections, newMessageThreads } = await getUnreadConnectionsCount(token.sub);
+        token.pendingReceivedRequestsCount = pendingReceived;
+        token.newConnectionsCount = newConnections;
+        token.newMessageThreadsCount = newMessageThreads;
       }
 
       return token;
@@ -76,6 +81,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.role = token.role as "mentee" | "mentor" | "admin";
         session.user.verified = Boolean(token.verified);
         session.user.pendingReferralCount = Number(token.pendingReferralCount ?? 0);
+        session.user.pendingReceivedRequestsCount = Number(token.pendingReceivedRequestsCount ?? 0);
+        session.user.newConnectionsCount = Number(token.newConnectionsCount ?? 0);
+        session.user.newMessageThreadsCount = Number(token.newMessageThreadsCount ?? 0);
       }
       return session;
     },

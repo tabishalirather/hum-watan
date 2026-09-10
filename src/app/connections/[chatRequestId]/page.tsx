@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { auth } from "@/auth";
@@ -7,6 +7,7 @@ import { db } from "@/db/client";
 import { users } from "@/db/schema/auth";
 import { getChatRequestForParticipant, getMessages } from "@/features/messages/queries/get-messages";
 import { MessageThread } from "@/features/messages/components/message-thread";
+import { messages } from "@/db/schema/messages";
 
 export default async function ChatThreadPage({
 	params,
@@ -29,6 +30,14 @@ export default async function ChatThreadPage({
 
 	const initialMessages = await getMessages(chatRequestId);
 
+	// Visiting the thread clears the unread badge for messages sent to us.
+	await db
+		.update(messages)
+		.set({ readAt: new Date() })
+		.where(
+			and(eq(messages.chatRequestId, chatRequestId), ne(messages.senderId, session.user.id), isNull(messages.readAt)),
+		);
+
 	return (
 		<main className="mx-auto w-full max-w-2xl px-4 py-10">
 			<Link
@@ -41,6 +50,7 @@ export default async function ChatThreadPage({
 			<MessageThread
 				chatRequestId={chatRequestId}
 				currentUserId={session.user.id}
+				otherUserId={otherUserId}
 				otherPartyName={otherUser?.name ?? "Unnamed user"}
 				initialMessages={initialMessages.map((m) => ({ ...m, createdAt: m.createdAt.toISOString() }))}
 			/>

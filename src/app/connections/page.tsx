@@ -1,7 +1,5 @@
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
-import { MessageCircle } from "lucide-react";
-import Link from "next/link";
 import { auth } from "@/auth";
 import { db } from "@/db/client";
 import { profiles } from "@/db/schema/profiles";
@@ -17,8 +15,10 @@ import {
 	getArchivedChatRequestsReceived,
 	getPendingChatRequestsReceived,
 } from "@/features/chat-requests/queries/get-chat-requests-received";
+import { getConnectionActivity } from "@/features/chat-requests/queries/get-connection-activity";
 import { SentChatRequests } from "@/features/chat-requests/components/sent-chat-requests";
 import { ReceivedChatRequests } from "@/features/chat-requests/components/received-chat-requests";
+import { ConnectionsList } from "@/features/chat-requests/components/connections-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 
 export default async function ConnectionsPage() {
@@ -29,6 +29,13 @@ export default async function ConnectionsPage() {
 		where: eq(profiles.userId, session.user.id),
 	});
 	if (!profile) redirect("/");
+
+	// Snapshot the previous visit before we overwrite it below - it's what
+	// tells a connection with no new message apart, "new" from "old".
+	const previouslyViewedAt = profile.connectionsViewedAt ?? new Date(0);
+
+	// Visiting this page clears the Connections unread badge.
+	await db.update(profiles).set({ connectionsViewedAt: new Date() }).where(eq(profiles.userId, session.user.id));
 
 	// Only mentors are ever a request's target (they're the only role listed
 	// on the map), so only mentors can receive requests. Everyone - mentee,
@@ -45,17 +52,45 @@ export default async function ConnectionsPage() {
 			getConnectionsSent(session.user.id),
 		]);
 
-	const connections = [...connectedReceived, ...connectedSent].sort((a, b) => {
-		const aTime = a.connectedAt ? new Date(a.connectedAt).getTime() : 0;
-		const bTime = b.connectedAt ? new Date(b.connectedAt).getTime() : 0;
-		return bTime - aTime;
-	});
+	const rawConnections = [...connectedReceived, ...connectedSent];
+	const activity = await getConnectionActivity(
+		rawConnections.map((c) => c.requestId),
+		session.user.id,
+	);
+
+	const connections = rawConnections
+		.map((c) => {
+			const { lastMessage, unreadCount } = activity.get(c.requestId) ?? {
+				lastMessage: null,
+				unreadCount: 0,
+			};
+			const isNewConnection = !lastMessage && Boolean(c.connectedAt) && c.connectedAt! > previouslyViewedAt;
+			return {
+				...c,
+				connectedAt: c.connectedAt?.toISOString() ?? null,
+				lastMessage: lastMessage
+					? { ...lastMessage, createdAt: lastMessage.createdAt.toISOString(), isMine: lastMessage.senderId === session.user.id }
+					: null,
+				unreadCount,
+				isNewConnection,
+				sortKey: (lastMessage?.createdAt ?? c.connectedAt ?? new Date(0)).getTime(),
+			};
+		})
+		.sort((a, b) => b.sortKey - a.sortKey);
 	const totalPending = pendingReceived.length + pendingSent.length;
+	const unreadConnectionsCount = connections.filter((c) => c.unreadCount > 0 || c.isNewConnection).length;
 
 	return (
 		<main className="mx-auto w-full max-w-2xl px-4 py-10">
 			<div className="mb-8 space-y-2">
-				<h1 className="text-2xl font-semibold">Your connections</h1>
+				<div className="flex items-center gap-2">
+					<h1 className="text-2xl font-semibold">Your connections</h1>
+					{connections.length > 0 && (
+						<span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+							{connections.length}
+						</span>
+					)}
+				</div>
 				<p className="text-sm text-muted-foreground">
 					{canReceive
 						? "Review requests, track ones you've sent, and message people you're connected with."
@@ -84,9 +119,9 @@ export default async function ConnectionsPage() {
 					</TabsTrigger>
 					<TabsTrigger value="connected" className="flex-1">
 						Connected
-						{connections.length > 0 && (
+						{unreadConnectionsCount > 0 && (
 							<span className="ml-1 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
-								{connections.length}
+								{unreadConnectionsCount}
 							</span>
 						)}
 					</TabsTrigger>
@@ -110,26 +145,7 @@ export default async function ConnectionsPage() {
 							</p>
 						</section>
 					) : (
-						<div className="space-y-3">
-							{connections.map((c) => (
-								<Link
-									key={c.requestId}
-									href={`/connections/${c.requestId}`}
-									className="flex items-center justify-between gap-3 rounded-lg border border-border/80 bg-card px-4 py-4 transition-colors hover:bg-muted/50"
-								>
-									<div>
-										<p className="font-medium">{c.otherName ?? "Unnamed user"}</p>
-										<p className="text-sm capitalize text-muted-foreground">{c.otherRole}</p>
-										{c.connectedAt && (
-											<p className="mt-1 text-xs text-muted-foreground">
-												Connected {new Date(c.connectedAt).toLocaleDateString()}
-											</p>
-										)}
-									</div>
-									<MessageCircle className="size-4 shrink-0 text-primary" />
-								</Link>
-							))}
-						</div>
+						<ConnectionsList connections={connections} />
 					)}
 				</TabsContent>
 			</Tabs>

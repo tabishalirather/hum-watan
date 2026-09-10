@@ -7,6 +7,9 @@ declare module "next-auth" {
       role: "mentee" | "mentor" | "admin";
       verified: boolean;
       pendingReferralCount: number;
+      pendingReceivedRequestsCount: number;
+      newConnectionsCount: number;
+      newMessageThreadsCount: number;
     } & DefaultSession["user"];
   }
 }
@@ -16,5 +19,8 @@ declare module "next-auth/jwt" {
     role?: "mentee" | "mentor" | "admin";
     verified?: boolean;
     pendingReferralCount?: number;
+    pendingReceivedRequestsCount?: number;
+    newConnectionsCount?: number;
+    newMessageThreadsCount?: number;
   }
 }

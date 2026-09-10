@@ -10,6 +10,9 @@ export const mentorProfileSchema = z.object({
     .trim()
     .max(120, "Keep this under 120 characters.")
     .optional(),
+  showUniversity: z.boolean(),
+  showCity: z.boolean(),
+  showBio: z.boolean(),
 });
 
 export type MentorProfileInput = z.infer<typeof mentorProfileSchema>;

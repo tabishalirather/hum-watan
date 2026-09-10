@@ -121,7 +121,18 @@ function buildPersonRow(person: MapPerson, contact: ContactAction | undefined) {
 
   const name = document.createElement("strong");
   name.textContent = person.name ?? "Anonymous";
-  row.append(name, document.createElement("br"));
+  if (person.mentorUserId) {
+    const nameLink = document.createElement("a");
+    nameLink.href = `/people/${person.mentorUserId}`;
+    nameLink.style.color = "inherit";
+    nameLink.style.textDecoration = "none";
+    nameLink.append(name);
+    nameLink.addEventListener("mouseenter", () => (name.style.textDecoration = "underline"));
+    nameLink.addEventListener("mouseleave", () => (name.style.textDecoration = "none"));
+    row.append(nameLink, document.createElement("br"));
+  } else {
+    row.append(name, document.createElement("br"));
+  }
 
   if (isCoordinator) {
     row.append(

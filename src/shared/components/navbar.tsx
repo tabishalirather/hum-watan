@@ -6,6 +6,7 @@ import { ArrowUpRight, Compass, Inbox, Users } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { isMentorCapable } from "@/features/auth/lib/roles";
 
+
 export function Navbar() {
   const { data: session, status } = useSession();
 
@@ -48,7 +49,7 @@ export function Navbar() {
                   size="sm"
                 >
                   <Inbox />
-                  Requests
+                  Verification requests
                   <span className="flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
                     {session.user.pendingReferralCount}
                   </span>
@@ -67,6 +68,22 @@ export function Navbar() {
               >
                 <Users />
                 Connections
+                {session.user.newMessageThreadsCount > 0 && (
+                  <span
+                    className="flex min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white"
+                    aria-label={`${session.user.newMessageThreadsCount} unread message threads`}
+                  >
+                    {session.user.newMessageThreadsCount}
+                  </span>
+                )}
+                {session.user.pendingReceivedRequestsCount + session.user.newConnectionsCount > 0 && (
+                  <span
+                    className="flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground"
+                    aria-label={`${session.user.pendingReceivedRequestsCount + session.user.newConnectionsCount} new connection requests`}
+                  >
+                    {session.user.pendingReceivedRequestsCount + session.user.newConnectionsCount}
+                  </span>
+                )}
               </Button>
               <Button
                 render={<Link href="/profile" />}

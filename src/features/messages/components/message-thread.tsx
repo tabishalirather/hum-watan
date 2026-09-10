@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Send } from "lucide-react";
+import Link from "next/link";
 import { sendMessage } from "@/features/messages/actions/send-message";
 import { Button } from "@/shared/components/ui/button";
 
@@ -24,11 +25,13 @@ async function fetchMessages(chatRequestId: string): Promise<Message[]> {
 export function MessageThread({
 	chatRequestId,
 	currentUserId,
+	otherUserId,
 	otherPartyName,
 	initialMessages,
 }: {
 	chatRequestId: string;
 	currentUserId: string;
+	otherUserId: string;
 	otherPartyName: string;
 	initialMessages: Message[];
 }) {
@@ -71,7 +74,9 @@ export function MessageThread({
 	return (
 		<div className="flex h-[70vh] flex-col rounded-xl border border-border/80 bg-card">
 			<div className="border-b border-border/80 px-4 py-3">
-				<p className="font-semibold">{otherPartyName}</p>
+				<Link href={`/people/${otherUserId}`} className="font-semibold hover:underline">
+					{otherPartyName}
+				</Link>
 			</div>
 			<div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
 				{messages.length === 0 ? (

@@ -114,6 +114,28 @@ export function MentorProfileForm({
 				{errors.bio && <p className="text-sm text-destructive">{errors.bio.message}</p>}
 			</div>
 
+			<div className="space-y-3 rounded-lg border border-border/80 bg-muted/30 p-4">
+				<div>
+					<p className="text-sm font-medium">Profile privacy</p>
+					<p className="text-xs text-muted-foreground">
+						Choose what shows on your profile when someone clicks your name. Your name and field of
+						study are always visible so people know who they&apos;re contacting.
+					</p>
+				</div>
+				<label className="flex items-center gap-2 text-sm">
+					<input type="checkbox" {...register("showUniversity")} className="size-4 rounded border-input" />
+					Show my university
+				</label>
+				<label className="flex items-center gap-2 text-sm">
+					<input type="checkbox" {...register("showCity")} className="size-4 rounded border-input" />
+					Show my city
+				</label>
+				<label className="flex items-center gap-2 text-sm">
+					<input type="checkbox" {...register("showBio")} className="size-4 rounded border-input" />
+					Show my bio
+				</label>
+			</div>
+
 			{serverError && <p className="text-sm text-destructive">{serverError}</p>}
 			{saved && <p className="text-sm text-muted-foreground">Profile saved.</p>}
 			<Button type="submit" disabled={isSubmitting} className="w-full">

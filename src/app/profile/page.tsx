@@ -87,6 +87,9 @@ export default async function ProfilePage() {
 						universityId: profile.universityId ?? "",
 						bio: profile.bio ?? "",
 						scholarshipStatus: profile.scholarshipStatus ?? "",
+						showUniversity: profile.showUniversity,
+						showCity: profile.showCity,
+						showBio: profile.showBio,
 					}}
 					universities={universities}
 				/>

@@ -26,6 +26,9 @@ export async function updateMentorProfile(input: MentorProfileInput) {
         universityId: data.data.universityId,
         bio: data.data.bio || null,
         scholarshipStatus: data.data.scholarshipStatus || null,
+        showUniversity: data.data.showUniversity,
+        showCity: data.data.showCity,
+        showBio: data.data.showBio,
       })
       .where(and(eq(profiles.userId, session.user.id), eq(profiles.role, "mentor")))
       .returning({ userId: profiles.userId });
@@ -36,7 +39,18 @@ export async function updateMentorProfile(input: MentorProfileInput) {
         action: "mentor_profile_updated",
         entityType: "profile",
         entityId: updatedProfile.userId,
-        metadata: { fields: ["subject", "degreeLevel", "universityId", "bio", "scholarshipStatus"] },
+        metadata: {
+          fields: [
+            "subject",
+            "degreeLevel",
+            "universityId",
+            "bio",
+            "scholarshipStatus",
+            "showUniversity",
+            "showCity",
+            "showBio",
+          ],
+        },
       });
     }
 
