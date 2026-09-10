@@ -3,13 +3,14 @@ import { BadgeCheck } from "lucide-react";
 import { auth } from "@/auth";
 import { db } from "@/db/client";
 import { profiles } from "@/db/schema/profiles";
+import { users } from "@/db/schema/auth";
 import { eq } from "drizzle-orm";
 import { MentorProfileForm } from "@/features/profile/components/mentor-profile-form";
 import { MenteeProfileForm } from "@/features/profile/components/mentee-profile-form";
+import { AccountSettingsForm } from "@/features/profile/components/account-settings-form";
 import { getProfileOptions } from "@/features/profile/queries/get-profile-options";
 import { MentorReferralApprovals } from "@/features/auth/components/mentor-referral-approvals";
 import { mentorReferrals } from "@/db/schema/referrals";
-import { users } from "@/db/schema/auth";
 import { and } from "drizzle-orm";
 
 export default async function ProfilePage() {
@@ -18,6 +19,16 @@ export default async function ProfilePage() {
 
 	const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
 	if (!profile) redirect("/");
+
+	const account = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
+	if (!account) redirect("/");
+
+	const accountSection = (
+		<AccountSettingsForm
+			username={account.username}
+			initialValues={{ name: account.name ?? "", email: account.email }}
+		/>
+	);
 
 	if (profile.role === "mentor") {
 		const [universities, pendingReferrals] = await Promise.all([
@@ -48,6 +59,7 @@ export default async function ProfilePage() {
 						Complete your academic details so the right people can find you on the map.
 					</p>
 				</div>
+				{accountSection}
 				<MentorReferralApprovals referrals={pendingReferrals} />
 				{profile.verified ? (
 					<div className="mb-6 flex items-start gap-3 rounded-xl border border-emerald-300/70 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
@@ -82,6 +94,21 @@ export default async function ProfilePage() {
 		);
 	}
 
+	if (profile.role === "admin") {
+		return (
+			<div className="mx-auto w-full max-w-2xl px-4 py-10">
+				<div className="mb-8 space-y-2">
+					<h1 className="text-2xl font-semibold">Your profile</h1>
+					<p className="text-sm text-muted-foreground">
+						Admin accounts don&apos;t appear on the map. Manage the platform from the Admin
+						dashboard.
+					</p>
+				</div>
+				{accountSection}
+			</div>
+		);
+	}
+
 	return (
 		<div className="mx-auto w-full max-w-2xl px-4 py-10">
 			<div className="mb-8 space-y-2">
@@ -92,6 +119,7 @@ export default async function ProfilePage() {
 					for one at the university, city, or scholarship you&apos;re targeting.
 				</p>
 			</div>
+			{accountSection}
 			<MenteeProfileForm
 				initialValues={{
 					targetPrograms: profile.targetPrograms ?? "",

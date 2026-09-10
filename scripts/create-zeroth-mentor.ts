@@ -5,6 +5,7 @@ import { db } from "../src/db/client";
 import { users } from "../src/db/schema/auth";
 import { profiles } from "../src/db/schema/profiles";
 import { countries, cities, universities } from "../src/db/schema/geo";
+import { generateUniqueUsername } from "../src/features/auth/lib/username";
 
 async function main() {
   const email = "tabishrather7006@gmail.com";
@@ -39,7 +40,8 @@ let user = await db.query.users.findFirst({ where: eq(users.email, email) });
 if (user) {
   [user] = await db.update(users).set({ name: "Tabish Ali Rather", passwordHash }).where(eq(users.id, user.id)).returning();
 } else {
-  [user] = await db.insert(users).values({ name: "Tabish Ali Rather", email, passwordHash }).returning();
+  const username = await generateUniqueUsername("mentor");
+  [user] = await db.insert(users).values({ name: "Tabish Ali Rather", email, passwordHash, username }).returning();
 }
 
 const bio = "Primary affiliation: University Cote d Azur, Nice, France. Previous affiliations: University of L Aquila, Italy; TUHH/UHH, Hamburg, Germany. InterMaths background.";

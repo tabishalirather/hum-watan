@@ -9,6 +9,7 @@ import { profiles } from "@/db/schema/profiles";
 import { mentorReferrals } from "@/db/schema/referrals";
 import { mentorRegisterSchema, type MentorRegisterInput } from "@/features/auth/validators/auth-schema";
 import { isMentorCapable } from "@/features/auth/lib/roles";
+import { generateUniqueUsername } from "@/features/auth/lib/username";
 
 export async function registerMentor(input: MentorRegisterInput) {
   const parsed = mentorRegisterSchema.safeParse(input);
@@ -30,6 +31,7 @@ export async function registerMentor(input: MentorRegisterInput) {
   }
 
   const passwordHash = await bcrypt.hash(data.password, 10);
+  const username = await generateUniqueUsername("mentor");
   // Future-only fallback token: email delivery will be re-enabled after a
   // verified sending domain is configured.
   const token = randomUUID();
@@ -38,7 +40,7 @@ export async function registerMentor(input: MentorRegisterInput) {
     await db.transaction(async (tx) => {
       const [user] = await tx
         .insert(users)
-        .values({ name: data.name, email: data.email, passwordHash })
+        .values({ name: data.name, email: data.email, passwordHash, username })
         .returning();
 
       await tx.insert(profiles).values({ userId: user.id, role: "mentor", verified: false });

@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { and, eq, inArray, like } from "drizzle-orm";
 import { db } from "./client";
 import { countries, cities, universities, users, profiles } from "./schema";
+import { generateUniqueUsername } from "../features/auth/lib/username";
 
 const LOCATIONS = [
   ["United Kingdom", "GB", "London", 51.5072, -0.1276, "University College London"],
@@ -96,10 +97,16 @@ async function getOrCreateUniversity(name: string, cityId: string, lat: number, 
   return university;
 }
 
-async function getOrCreateUser(name: string, email: string, passwordHash: string) {
+async function getOrCreateUser(
+  name: string,
+  email: string,
+  passwordHash: string,
+  role: "mentor" | "mentee",
+) {
   const existing = await db.query.users.findFirst({ where: eq(users.email, email) });
   if (existing) return existing;
-  const [user] = await db.insert(users).values({ name, email, passwordHash }).returning();
+  const username = await generateUniqueUsername(role);
+  const [user] = await db.insert(users).values({ name, email, passwordHash, username }).returning();
   return user;
 }
 
@@ -140,7 +147,7 @@ async function main() {
   const pragueUniversity = universityRecords.get("CZ");
   if (!londonUniversity || !pragueUniversity) throw new Error("Demo universities were not created.");
 
-  const mentor = await getOrCreateUser("Demo Mentor", "mentor@example.com", passwordHash);
+  const mentor = await getOrCreateUser("Demo Mentor", "mentor@example.com", passwordHash, "mentor");
   await db
     .insert(profiles)
     .values({
@@ -157,7 +164,7 @@ async function main() {
       set: { role: "mentor", subject: "Mathematics", degreeLevel: "phd", universityId: londonUniversity.id, coordinatorLevel: "country", verified: true },
     });
 
-  const mentee = await getOrCreateUser("Demo Mentee", "mentee@example.com", passwordHash);
+  const mentee = await getOrCreateUser("Demo Mentee", "mentee@example.com", passwordHash, "mentee");
   await db
     .insert(profiles)
     .values({
@@ -181,7 +188,7 @@ async function main() {
 
     const name = `${FIRST_NAMES[index % FIRST_NAMES.length]} ${LAST_NAMES[index % LAST_NAMES.length]} ${String(index + 1).padStart(3, "0")}`;
     const email = `demo.mentor.${String(index + 1).padStart(3, "0")}@example.com`;
-    const user = await getOrCreateUser(name, email, passwordHash);
+    const user = await getOrCreateUser(name, email, passwordHash, "mentor");
 
     await db
       .insert(profiles)

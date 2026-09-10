@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { users } from "@/db/schema/auth";
 import { profiles } from "@/db/schema/profiles";
 import { menteeRegisterSchema, type MenteeRegisterInput } from "@/features/auth/validators/auth-schema";
+import { generateUniqueUsername } from "@/features/auth/lib/username";
 
 export async function registerMentee(input: MenteeRegisterInput) {
   const parsed = menteeRegisterSchema.safeParse(input);
@@ -18,11 +19,12 @@ export async function registerMentee(input: MenteeRegisterInput) {
   }
 
   const passwordHash = await bcrypt.hash(data.password, 10);
+  const username = await generateUniqueUsername("mentee");
 
   await db.transaction(async (tx) => {
     const [user] = await tx
       .insert(users)
-      .values({ name: data.name, email: data.email, passwordHash })
+      .values({ name: data.name, email: data.email, passwordHash, username })
       .returning();
 
     await tx.insert(profiles).values({ userId: user.id, role: "mentee", verified: true });
