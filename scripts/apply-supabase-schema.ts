@@ -72,6 +72,18 @@ async function main() {
     await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS show_city boolean NOT NULL DEFAULT true;`;
     await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS show_bio boolean NOT NULL DEFAULT true;`;
 
+    await sql`
+      CREATE TABLE IF NOT EXISTS site_settings (
+        id integer PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+        mentee_message_rate_limit_enabled boolean NOT NULL DEFAULT false
+      );
+    `;
+    await sql`
+      INSERT INTO site_settings (id, mentee_message_rate_limit_enabled)
+      VALUES (1, false)
+      ON CONFLICT (id) DO NOTHING;
+    `;
+
     console.log("Supabase schema is up to date.");
   } finally {
     await sql.end();

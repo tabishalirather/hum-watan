@@ -70,34 +70,37 @@ Tick items with `[x]` as they are completed. Keep implementation details and dec
 
 - [x] Authenticated users see invite actions instead of join actions
 - [x] Invite links use the configured public application URL
-- [x] Dedicated Requests page
+- [x] Dedicated Requests page (renamed to "Verification requests", mentor-verification only)
 - [x] Verification requests tab
 - [x] Verification request count in navigation
-- [x] Chat requests tab placeholder
-- [ ] Notification count and notification center
+- [x] Chat requests moved into a dedicated Connections inbox (sent/received/connected tabs)
+- [x] Connections nav badge: unread message threads (red) and pending/new connection requests (black), distinct-people counts, not raw message totals
+- [ ] General notification count and notification center (chat/connections have their own badge now; no unified notifications system yet)
 
 ## Phase 1: Stabilize the Current MVP
 
 ### Testing
 
-- [ ] Add a test runner and test command
-- [ ] Test mentee registration validation
-- [ ] Test mentor registration validation
+- [x] Add a test runner and test command (Vitest, 52 tests passing)
+- [x] Test mentee registration validation
+- [x] Test mentor registration validation
+- [x] Test referee ownership authorization
+- [x] Test verified-referee approval authorization
+- [x] Test approve, reject transitions on mentor referrals
+- [x] Test verified-only map visibility and filtering
+- [x] Test public map response shape
+- [x] Test map API rate limits and input bounds
+- [x] Test chat request send/review/cancel flows
+- [x] Test account-update validation
 - [ ] Test transactional registration failure behavior
-- [ ] Test referee ownership authorization
-- [ ] Test verified-referee approval authorization
-- [ ] Test approve, reject, and already-resolved transitions
 - [ ] Test concurrent approval and rejection attempts
 - [ ] Test archived history and review timestamps
-- [ ] Test verified-only map visibility
-- [ ] Test public map response shape
-- [ ] Test map API rate limits and input bounds
 - [ ] Add seeded end-to-end smoke test
 
 ### Privacy and Account Controls
 
-- [ ] Decide exactly which mentor fields are public
-- [ ] Decide whether mentor names are shown on map popups
+- [x] Decide exactly which mentor fields are public (name/role always public; university, city, bio are mentor-toggleable via `show_university`/`show_city`/`show_bio` on the public profile page)
+- [x] Decide whether mentor names are shown on map popups (yes, popups link through to the public profile)
 - [ ] Add mentor profile publish/unpublish control
 - [ ] Add account deactivation
 - [ ] Hide deactivated users from the map and requests
@@ -119,60 +122,71 @@ Tick items with `[x]` as they are completed. Keep implementation details and dec
 - [ ] Add database backup and restore procedure
 - [ ] Document migration and rollback procedure
 
-## Phase 2: Chat Requests and Messaging
+## Phase 2: Chat Requests and Messaging — mostly complete
 
 ### Data Model
 
-- [ ] Add `chat_requests` table
-- [ ] Add request status enum: pending, accepted, rejected, blocked, cancelled
-- [ ] Add `conversations` table
-- [ ] Add conversation participants table
-- [ ] Add `messages` table
-- [ ] Add message read state
-- [ ] Add created and updated timestamps
+- [x] Add `chat_requests` table (`requester_user_id` / `recipient_user_id` — requester can be mentee or mentor, recipient always a mentor)
+- [x] Add request status enum: pending, accepted, rejected, cancelled (no separate `blocked` status — blocking is a separate open item below)
+- [x] Add `messages` table
+- [x] Add message read state (`read_at`)
+- [x] Add created and reviewed/read timestamps
+- [x] Add indexes for participant and conversation lookups
+- [ ] Add `conversations`/participants tables (not needed yet — a chat request IS the conversation, 1:1 only)
 - [ ] Add soft-delete or moderation metadata
-- [ ] Add indexes for participant and conversation lookups
 
 ### Chat Request Workflow
 
-- [ ] Allow a mentee to request contact with a verified mentor
-- [ ] Prevent duplicate pending requests
-- [ ] Prevent requests to hidden, deactivated, or blocked mentors
-- [ ] Show pending request state to the mentee
-- [ ] Show incoming requests in Requests > Chat requests
-- [ ] Allow mentor to approve a chat request
-- [ ] Allow mentor to reject a chat request
-- [ ] Allow either participant to cancel where appropriate
+- [x] Allow a mentee (or mentor) to request contact with a verified, visible mentor
+- [x] Prevent duplicate pending/accepted requests to the same mentor
+- [x] Prevent requests to hidden, deactivated, or unverified mentors
+- [x] Show pending request state to the requester (Connections > Sent)
+- [x] Show incoming requests in Connections > Received
+- [x] Allow mentor to approve a chat request
+- [x] Allow mentor to reject a chat request
+- [x] Allow requester to cancel a pending request
+- [x] Authorize every action by participant/recipient ownership
 - [ ] Add block and report actions
-- [ ] Authorize every action by participant and target ownership
 
 ### Conversations
 
-- [ ] Add conversation list page
-- [ ] Add conversation detail route
-- [ ] Add chat window component
-- [ ] Add send-message server action
-- [ ] Add message validation schema
-- [ ] Enforce message length limits
+- [x] Add connections list page (Connections > Connected, inbox-style with last message preview)
+- [x] Add conversation detail route (`/connections/[chatRequestId]`)
+- [x] Add chat window component (`MessageThread`)
+- [x] Add send-message server action
+- [x] Add message validation schema (1–2000 chars)
+- [x] Enforce message length limits
+- [x] Render messages as plain text
+- [x] Add unread message state (per-thread `read_at`, distinct-thread unread count in nav)
+- [x] Add empty state (no messages yet)
+- [x] Use polling for MVP (4s client-side refetch via React Query)
+- [ ] Add loading/error states beyond the basic fetch failure
 - [ ] Enforce message send rate limits
-- [ ] Render messages as plain text
-- [ ] Add unread message state
-- [ ] Add empty, loading, and error states
-- [ ] Use polling or refresh for MVP
-- [ ] Defer realtime sockets until after the core workflow is validated
+- [ ] Defer realtime sockets until after the core workflow is validated (still deferred, polling in place)
+
+### Public Profiles (built ahead of schedule, feeds into Chat Requests)
+
+- [x] Public profile page at `/people/[userId]`
+- [x] Per-field mentor privacy toggles (`show_university`, `show_city`, `show_bio`) — name and role always shown
+- [x] Linked from map popups and message threads
 
 ### Suggested Structure
 
 ```text
-src/features/messaging/
+src/features/chat-requests/
   actions/
   queries/
   components/
   validators/
-  types/
+src/features/messages/
+  actions/
+  queries/
+  components/
+  validators/
 src/db/schema/chat-requests.ts
 src/db/schema/messages.ts
-src/app/messages/
+src/app/connections/
+src/app/people/[userId]/
 ```
 
 ## Phase 3: Scheduling and Appointments
@@ -381,11 +395,11 @@ src/app/admin/
 
 ## Recommended Build Order
 
-1. Add tests and finalize privacy rules.
-2. Implement chat requests and basic messaging.
-3. Add persistent notifications and unread counts.
+1. ~~Add tests and finalize privacy rules.~~ Done — 52 tests, per-field mentor privacy in place.
+2. ~~Implement chat requests and basic messaging.~~ Done — Connections inbox, threaded messaging, polling, unread badges.
+3. Add persistent notifications and unread counts (chat/connections have their own badge; still no general-purpose notifications table/center).
 4. Integrate Cal.com-hosted scheduling.
-5. Build admin and moderation tools.
+5. Build admin and moderation tools (verification management and account moderation already exist — reports/blocking still open).
 6. Re-enable domain-backed email verification.
 7. Decide and implement SMS only if required.
 8. Complete production deployment hardening.

@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { auditEvents } from "@/db/schema/audit";
 import { profiles } from "@/db/schema/profiles";
 import { mentorReferrals } from "@/db/schema/referrals";
+import { siteSettings } from "@/db/schema/site-settings";
 import { users } from "@/db/schema/auth";
 import { getAdminUserId } from "@/features/admin/lib/require-admin";
 import { getAdminEmailPolicyError } from "@/features/admin/lib/admin-email-policy";
@@ -153,4 +154,19 @@ export async function revokeMentorVerification(userId: string, reason: string) {
   });
 
   return result ? { success: true } : { error: "Mentor profile not found." };
+}
+
+export async function setMenteeMessageRateLimit(enabled: boolean) {
+  const adminUserId = await getAdminUserId();
+  if (!adminUserId) return { error: "Only administrators can manage message settings." };
+
+  await db
+    .insert(siteSettings)
+    .values({ id: 1, menteeMessageRateLimitEnabled: enabled })
+    .onConflictDoUpdate({
+      target: siteSettings.id,
+      set: { menteeMessageRateLimitEnabled: enabled },
+    });
+
+  return { success: true };
 }

@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Send } from "lucide-react";
 import Link from "next/link";
 import { sendMessage } from "@/features/messages/actions/send-message";
+import { MENTEE_MESSAGE_RATE_LIMIT_ERROR } from "@/features/messages/lib/message-errors";
 import { Button } from "@/shared/components/ui/button";
 
 type Message = {
@@ -39,6 +40,7 @@ export function MessageThread({
 	const [draft, setDraft] = useState("");
 	const [isSending, setIsSending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [rateLimitReached, setRateLimitReached] = useState(false);
 	const bottomRef = useRef<HTMLDivElement>(null);
 
 	const messagesQuery = useQuery({
@@ -49,10 +51,17 @@ export function MessageThread({
 	});
 
 	const messages = messagesQuery.data ?? [];
+	const isInitialLoading = messagesQuery.isPending && !messagesQuery.data;
 
 	useEffect(() => {
 		bottomRef.current?.scrollIntoView({ behavior: "smooth" });
 	}, [messages.length]);
+
+	useEffect(() => {
+		if (messages.some((message) => message.senderId === otherUserId)) {
+			setRateLimitReached(false);
+		}
+	}, [messages, otherUserId]);
 
 	const handleSend = async () => {
 		const body = draft.trim();
@@ -60,11 +69,16 @@ export function MessageThread({
 
 		setIsSending(true);
 		setError(null);
+		setRateLimitReached(false);
 		const result = await sendMessage({ chatRequestId, body });
 		setIsSending(false);
 
 		if (result.error) {
-			setError(result.error);
+			if (result.error === MENTEE_MESSAGE_RATE_LIMIT_ERROR) {
+				setRateLimitReached(true);
+			} else {
+				setError(result.error);
+			}
 			return;
 		}
 		setDraft("");
@@ -79,7 +93,13 @@ export function MessageThread({
 				</Link>
 			</div>
 			<div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-				{messages.length === 0 ? (
+				{isInitialLoading ? (
+					<div className="space-y-3" aria-label="Loading messages">
+						<div className="h-12 w-2/3 animate-pulse rounded-2xl bg-muted" />
+						<div className="ml-auto h-12 w-1/2 animate-pulse rounded-2xl bg-muted" />
+						<div className="h-12 w-3/5 animate-pulse rounded-2xl bg-muted" />
+					</div>
+				) : messages.length === 0 ? (
 					<p className="text-sm text-muted-foreground">
 						No messages yet. Say hello to {otherPartyName}.
 					</p>
@@ -89,15 +109,13 @@ export function MessageThread({
 						return (
 							<div key={message.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
 								<div
-									className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm leading-6 ${
-										isMine ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
-									}`}
+									className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm leading-6 ${isMine ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+										}`}
 								>
 									<p className="whitespace-pre-wrap break-words">{message.body}</p>
 									<p
-										className={`mt-1 text-[10px] ${
-											isMine ? "text-primary-foreground/70" : "text-muted-foreground"
-										}`}
+										className={`mt-1 text-[10px] ${isMine ? "text-primary-foreground/70" : "text-muted-foreground"
+											}`}
 									>
 										{new Date(message.createdAt).toLocaleTimeString([], {
 											hour: "2-digit",
@@ -109,8 +127,15 @@ export function MessageThread({
 						);
 					})
 				)}
+				{messagesQuery.isError && messagesQuery.data && (
+					<p className="text-xs text-muted-foreground">Couldn&apos;t refresh, retrying...</p>
+				)}
+				{messagesQuery.isError && !messagesQuery.data && (
+					<p className="text-sm text-destructive">Couldn&apos;t load messages. Retrying...</p>
+				)}
 				<div ref={bottomRef} />
 			</div>
+			{rateLimitReached && <p className="px-4 pb-2 text-sm text-muted-foreground">Waiting for {otherPartyName} to reply before you send another message.</p>}
 			{error && <p className="px-4 pb-2 text-sm text-destructive">{error}</p>}
 			<form
 				onSubmit={(e) => {
@@ -133,9 +158,9 @@ export function MessageThread({
 					maxLength={2000}
 					className="min-h-9 flex-1 resize-none rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
 				/>
-				<Button type="submit" size="sm" disabled={isSending || !draft.trim()}>
+				<Button type="submit" size="sm" disabled={isSending || !draft.trim() || rateLimitReached}>
 					<Send />
-					Send
+					{isSending ? "Sending..." : !draft.trim() ? "Write a message" : rateLimitReached ? "Waiting" : "Send"}
 				</Button>
 			</form>
 		</div>

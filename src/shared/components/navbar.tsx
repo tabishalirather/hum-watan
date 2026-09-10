@@ -50,9 +50,11 @@ export function Navbar() {
                 >
                   <Inbox />
                   Verification requests
-                  <span className="flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
-                    {session.user.pendingReferralCount}
-                  </span>
+                  {session.user.pendingReferralCount > 0 && (
+                    <span className="flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+                      {session.user.pendingReferralCount}
+                    </span>
+                  )}
                 </Button>
               )}
               {session.user?.role === "admin" && (

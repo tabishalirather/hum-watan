@@ -28,6 +28,9 @@ beforeAll(async () => {
 afterEach(async () => {
   // Truncate all tables for test isolation
   const tablesToTruncate = [
+      'messages',
+      'chat_requests',
+      'site_settings',
     'mentor_referrals',
     'profiles',
     'audit_events',
