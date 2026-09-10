@@ -7,12 +7,6 @@ import { profiles } from "@/db/schema/profiles";
 import { mentorReferrals } from "@/db/schema/referrals";
 import { MentorReferralApprovals } from "@/features/auth/components/mentor-referral-approvals";
 import { isAlwaysVerified, isMentorCapable } from "@/features/auth/lib/roles";
-import { ChatRequestApprovals } from "@/features/chat-requests/components/chat-request-approvals";
-import {
-	getArchivedChatRequestsForMentor,
-	getPendingChatRequestsForMentor,
-} from "@/features/chat-requests/queries/get-chat-requests-for-mentor";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 
 export default async function RequestsPage() {
 	const session = await auth();
@@ -58,9 +52,6 @@ export default async function RequestsPage() {
 			),
 		);
 
-	const pendingChatRequests = await getPendingChatRequestsForMentor(session.user.id);
-	const archivedChatRequests = await getArchivedChatRequestsForMentor(session.user.id);
-
 	return (
 		<main className="mx-auto w-full max-w-2xl px-4 py-10">
 			<div className="mb-8 space-y-2">
@@ -69,36 +60,11 @@ export default async function RequestsPage() {
 					Review mentor nominations assigned to you as their referee.
 				</p>
 			</div>
-			<Tabs defaultValue="verification" className="w-full">
-				<TabsList className="w-full">
-					<TabsTrigger value="verification" className="flex-1">
-						Verification requests
-						{pendingReferrals.length > 0 && (
-							<span className="ml-1 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
-								{pendingReferrals.length}
-							</span>
-						)}
-					</TabsTrigger>
-					<TabsTrigger value="chat" className="flex-1">
-						Chat requests
-						{pendingChatRequests.length > 0 && (
-							<span className="ml-1 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
-								{pendingChatRequests.length}
-							</span>
-						)}
-					</TabsTrigger>
-				</TabsList>
-				<TabsContent value="verification" className="pt-4">
-					<MentorReferralApprovals
-						referrals={pendingReferrals}
-						archivedReferrals={archivedReferrals}
-						showEmptyState
-					/>
-				</TabsContent>
-				<TabsContent value="chat" className="pt-4">
-					<ChatRequestApprovals requests={pendingChatRequests} archivedRequests={archivedChatRequests} />
-				</TabsContent>
-			</Tabs>
+			<MentorReferralApprovals
+				referrals={pendingReferrals}
+				archivedReferrals={archivedReferrals}
+				showEmptyState
+			/>
 		</main>
 	);
 }
