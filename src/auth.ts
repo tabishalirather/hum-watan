@@ -2,14 +2,12 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import bcrypt from "bcryptjs";
-import { and, count, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { users, accounts, sessions, verificationTokens } from "@/db/schema/auth";
 import { profiles } from "@/db/schema/profiles";
-import { mentorReferrals } from "@/db/schema/referrals";
 import { loginSchema } from "@/features/auth/validators/auth-schema";
 import { isAlwaysVerified } from "@/features/auth/lib/roles";
-import { getUnreadConnectionsCount } from "@/features/chat-requests/queries/get-unread-connections-count";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: DrizzleAdapter(db, {
@@ -56,21 +54,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         });
         token.role = profile?.role ?? "mentee";
         token.verified = isAlwaysVerified(profile?.role) || Boolean(profile?.verified);
-
-        const [{ pendingReferralCount }] = await db
-          .select({ pendingReferralCount: count() })
-          .from(mentorReferrals)
-          .where(
-            and(
-              eq(mentorReferrals.refereeUserId, token.sub),
-              eq(mentorReferrals.status, "pending"),
-            ),
-          );
-        token.pendingReferralCount = pendingReferralCount;
-        const { pendingReceived, newConnections, newMessageThreads } = await getUnreadConnectionsCount(token.sub);
-        token.pendingReceivedRequestsCount = pendingReceived;
-        token.newConnectionsCount = newConnections;
-        token.newMessageThreadsCount = newMessageThreads;
+        // Unread counts deliberately live outside the token. They changed on
+        // every message and forced four queries per JWT refresh, so the
+        // notification bell polls /api/notifications for them instead.
       }
 
       return token;
@@ -80,10 +66,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = token.sub as string;
         session.user.role = token.role as "mentee" | "mentor" | "admin";
         session.user.verified = Boolean(token.verified);
-        session.user.pendingReferralCount = Number(token.pendingReferralCount ?? 0);
-        session.user.pendingReceivedRequestsCount = Number(token.pendingReceivedRequestsCount ?? 0);
-        session.user.newConnectionsCount = Number(token.newConnectionsCount ?? 0);
-        session.user.newMessageThreadsCount = Number(token.newMessageThreadsCount ?? 0);
       }
       return session;
     },

@@ -9,6 +9,7 @@ import {
   profiles,
   mentorReferrals,
   chatRequests,
+  messages,
 } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
@@ -82,6 +83,7 @@ export async function createTestProfile(options: {
   degreeLevel?: string | null;
   universityId?: string | null;
   coordinatorLevel?: 'none' | 'city' | 'country';
+  connectionsViewedAt?: Date | null;
 }) {
   const {
     userId,
@@ -92,6 +94,7 @@ export async function createTestProfile(options: {
     degreeLevel = null as any,
     universityId = null,
     coordinatorLevel = 'none',
+    connectionsViewedAt = null,
   } = options;
 
   const result = await db
@@ -105,6 +108,7 @@ export async function createTestProfile(options: {
       degreeLevel,
       universityId,
       coordinatorLevel,
+      connectionsViewedAt,
     } as any)
     .returning();
 
@@ -178,4 +182,27 @@ export async function getChatRequestById(requestId: string) {
   return await db.query.chatRequests.findFirst({
     where: eq(chatRequests.id, requestId),
   });
+}
+
+export async function createTestMessage(options: {
+  chatRequestId: string;
+  senderId: string;
+  body?: string;
+  readAt?: Date | null;
+  createdAt?: Date;
+}) {
+  const { chatRequestId, senderId, body = 'Test message', readAt = null, createdAt } = options;
+
+  const result = await db
+    .insert(messages)
+    .values({
+      chatRequestId,
+      senderId,
+      body,
+      readAt,
+      ...(createdAt ? { createdAt } : {}),
+    })
+    .returning();
+
+  return result[0];
 }
