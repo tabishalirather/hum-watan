@@ -7,6 +7,9 @@ import { CountryDistributionChart } from "@/features/admin/components/country-di
 import { MenteeMessageRateLimitToggle } from "@/features/admin/components/mentee-message-rate-limit-toggle";
 import { ContactRequestMessageToggle } from "@/features/admin/components/contact-request-message-toggle";
 import { SiteContentEditor } from "@/features/admin/components/site-content-editor";
+import { AuditHistorySections } from "@/features/admin/components/audit-history-sections";
+import { ReportQueue } from "@/features/admin/components/report-queue";
+import { getReportedUsers } from "@/features/admin/queries/get-reports";
 import { getSiteContent } from "@/features/site-content/lib/site-content";
 import { siteSettings } from "@/db/schema/site-settings";
 import { db } from "@/db/client";
@@ -17,7 +20,10 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 	if (!adminUserId) redirect("/");
 
 	const { q = "" } = await searchParams;
-	const { referrals, accounts, auditHistory } = await getAdminDashboard(q);
+	const [{ referrals, accounts, auditHistory }, reportedUsers] = await Promise.all([
+		getAdminDashboard(q),
+		getReportedUsers(),
+	]);
 	const [settings] = await db.select().from(siteSettings).where(eq(siteSettings.id, 1));
 	const siteContent = getSiteContent(settings);
 	const pendingCount = referrals.filter((referral) => referral.status === "pending").length;
@@ -82,7 +88,34 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 				</tbody></table></div>
 			</section>
 
-			<section className="space-y-4"><div><h2 className="text-xl font-semibold">Audit history</h2><p className="text-sm text-muted-foreground">Append-only records of sensitive profile and moderation actions.</p></div><div className="overflow-x-auto rounded-xl border border-border bg-card"><table className="w-full min-w-[800px] text-left text-sm"><thead className="border-b border-border bg-muted/50 text-xs text-muted-foreground"><tr><th className="px-4 py-3">Time</th><th className="px-4 py-3">Action</th><th className="px-4 py-3">Entity</th><th className="px-4 py-3">Actor</th><th className="px-4 py-3">Reason</th></tr></thead><tbody>{auditHistory.map((event) => <tr key={event.id} className="border-b border-border last:border-0"><td className="px-4 py-3 text-xs text-muted-foreground">{event.createdAt.toLocaleString()}</td><td className="px-4 py-3">{event.action}</td><td className="px-4 py-3 text-xs">{event.entityType}</td><td className="px-4 py-3 text-xs">{event.actorName ?? event.actorEmail ?? "System"}</td><td className="max-w-xs truncate px-4 py-3 text-xs text-muted-foreground">{typeof event.metadata === "object" && event.metadata && "reason" in event.metadata ? String(event.metadata.reason) : "-"}</td></tr>)}</tbody></table>{auditHistory.length === 0 && <p className="p-6 text-sm text-muted-foreground">No audit events yet.</p>}</div></section>
+			<section className="space-y-4">
+				<div>
+					<h2 className="text-xl font-semibold">Reported users</h2>
+					<p className="text-sm text-muted-foreground">
+						Grouped by the person reported, worst first. Dismissing a report stops it counting against them.
+					</p>
+				</div>
+				<ReportQueue
+					reportedUsers={reportedUsers.map((user) => ({
+						...user,
+						latestReportAt: user.latestReportAt.toISOString(),
+						reports: user.reports.map((report) => ({
+							...report,
+							createdAt: report.createdAt.toISOString(),
+						})),
+					}))}
+				/>
+			</section>
+
+			<section className="space-y-4">
+				<div>
+					<h2 className="text-xl font-semibold">Audit history</h2>
+					<p className="text-sm text-muted-foreground">
+						Append-only records of sensitive profile and moderation actions, grouped by what they acted on.
+					</p>
+				</div>
+				<AuditHistorySections events={auditHistory} />
+			</section>
 		</main>
 	);
 }
