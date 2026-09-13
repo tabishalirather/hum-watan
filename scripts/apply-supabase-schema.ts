@@ -68,6 +68,7 @@ async function main() {
     }
 
     await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS connections_viewed_at timestamp;`;
+    await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS verifications_viewed_at timestamp;`;
     await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS show_university boolean NOT NULL DEFAULT true;`;
     await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS show_city boolean NOT NULL DEFAULT true;`;
     await sql`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS show_bio boolean NOT NULL DEFAULT true;`;

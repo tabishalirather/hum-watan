@@ -40,6 +40,11 @@ export const profiles = pgTable("profiles", {
   helpNeeded: text("help_needed"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   connectionsViewedAt: timestamp("connections_viewed_at"),
+  // Marks when this user last looked at their own verification outcome.
+  // Needed because a referee (or an admin) resolves the referral, not the
+  // mentor it concerns, so nothing the mentor does would otherwise clear
+  // "you were approved/rejected" from their notifications.
+  verificationsViewedAt: timestamp("verifications_viewed_at"),
   // Per-field visibility on the public profile page (/people/[userId]).
   // Name and role are never hideable — messaging depends on knowing who
   // you're talking to. These only apply to mentors, the only role with

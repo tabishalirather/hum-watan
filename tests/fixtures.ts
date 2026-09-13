@@ -84,6 +84,7 @@ export async function createTestProfile(options: {
   universityId?: string | null;
   coordinatorLevel?: 'none' | 'city' | 'country';
   connectionsViewedAt?: Date | null;
+  verificationsViewedAt?: Date | null;
 }) {
   const {
     userId,
@@ -95,6 +96,7 @@ export async function createTestProfile(options: {
     universityId = null,
     coordinatorLevel = 'none',
     connectionsViewedAt = null,
+    verificationsViewedAt = null,
   } = options;
 
   const result = await db
@@ -109,6 +111,7 @@ export async function createTestProfile(options: {
       universityId,
       coordinatorLevel,
       connectionsViewedAt,
+      verificationsViewedAt,
     } as any)
     .returning();
 
@@ -121,6 +124,7 @@ export async function createTestMentorReferral(options: {
   refereeEmail?: string;
   status?: 'pending' | 'confirmed' | 'rejected';
   token?: string;
+  reviewedAt?: Date | null;
 }) {
   const {
     mentorUserId,
@@ -128,6 +132,7 @@ export async function createTestMentorReferral(options: {
     refereeEmail = 'referee@example.com',
     status = 'pending',
     token = randomUUID(),
+    reviewedAt = null,
   } = options;
 
   const result = await db
@@ -138,6 +143,7 @@ export async function createTestMentorReferral(options: {
       refereeEmail,
       status,
       token,
+      reviewedAt,
     } as any)
     .returning();
 

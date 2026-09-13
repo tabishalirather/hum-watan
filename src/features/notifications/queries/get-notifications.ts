@@ -9,25 +9,27 @@ import { mentorReferrals } from "@/db/schema/referrals";
 import { userBlocks } from "@/db/schema/moderation";
 import { isAlwaysVerified, isMentorCapable } from "@/features/auth/lib/roles";
 
-// Notifications are derived from existing state rather than stored in their
-// own table. Every category already has a natural "unread" marker that the
-// relevant action clears:
+// Notifications are derived from existing rows rather than stored in their
+// own table. Each one clears either because the viewer performed the action
+// that resolves it, or because a per-user watermark says they have looked:
 //
-//   messages      -> messages.read_at, cleared by opening the thread
-//   requests      -> chat_requests.status, cleared by accepting/rejecting
-//   connections   -> profiles.connections_viewed_at, cleared by visiting
-//                    /connections
-//   verifications -> mentor_referrals.status, cleared by reviewing
+//   messages       -> messages.read_at, cleared by opening the thread
+//   a request you
+//   must answer    -> chat_requests.status, cleared by accepting/rejecting
+//   an outcome on
+//   your own
+//   request        -> profiles.connections_viewed_at
+//   a referral you
+//   must review    -> mentor_referrals.status, cleared by reviewing
+//   an outcome on
+//   your own
+//   verification   -> profiles.verifications_viewed_at
 //
-// That means opening the panel deliberately clears nothing: an item leaves
-// the list when it is acted on, not when it is glanced at.
+// The last one needs its own watermark because the referee or an admin
+// resolves the referral, never the mentor it concerns, so no action of
+// theirs would otherwise clear it.
 
-export const NOTIFICATION_CATEGORIES = [
-  "messages",
-  "requests",
-  "connections",
-  "verifications",
-] as const;
+export const NOTIFICATION_CATEGORIES = ["messages", "connections", "verifications"] as const;
 
 export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number];
 
@@ -38,6 +40,8 @@ export type NotificationItem = {
   body: string;
   href: string;
   createdAt: Date;
+  /** True when the viewer still has to accept, reject or review something. */
+  actionRequired?: boolean;
   /** Unread messages in this thread. Only set for the messages category. */
   count?: number;
 };
@@ -56,7 +60,7 @@ const MAX_ITEMS_RETURNED = 30;
 
 const EMPTY_PAYLOAD: NotificationsPayload = {
   total: 0,
-  counts: { messages: 0, requests: 0, connections: 0, verifications: 0 },
+  counts: { messages: 0, connections: 0, verifications: 0 },
   items: [],
 };
 
@@ -82,97 +86,123 @@ export async function getNotifications(viewerUserId: string): Promise<Notificati
   const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, viewerUserId) });
   if (!profile) return EMPTY_PAYLOAD;
 
-  const viewedAt = profile.connectionsViewedAt ?? new Date(0);
+  const connectionsViewedAt = profile.connectionsViewedAt ?? new Date(0);
+  const verificationsViewedAt = profile.verificationsViewedAt ?? new Date(0);
   const isParticipant = or(
     eq(chatRequests.requesterUserId, viewerUserId),
     eq(chatRequests.recipientUserId, viewerUserId),
   );
 
   // Only a verified mentor (or an admin, who is always mentor-capable and
-  // always verified) can actually act on a referral. Anyone else would be
-  // sent straight back to /profile by the Requests page, so never notify
-  // them about one.
+  // always verified) can act on a referral. Anyone else would be sent back
+  // to /profile by the Requests page, so never notify them about one.
   const canReviewReferrals =
     isMentorCapable(profile.role) && (isAlwaysVerified(profile.role) || profile.verified);
 
   const requesterUser = alias(users, "notification_requester");
   const recipientUser = alias(users, "notification_recipient");
 
-  const [blockedUserIds, unreadMessageRows, pendingRequestRows, connectionRows, referralRows] =
-    await Promise.all([
-      getBlockedUserIds(viewerUserId),
-      db
-        .select({
-          chatRequestId: messages.chatRequestId,
-          senderId: messages.senderId,
-          senderName: users.name,
-          body: messages.body,
-          createdAt: messages.createdAt,
-        })
-        .from(messages)
-        .innerJoin(chatRequests, eq(chatRequests.id, messages.chatRequestId))
-        .innerJoin(users, eq(users.id, messages.senderId))
-        .where(
-          and(
-            isParticipant,
-            eq(chatRequests.status, "accepted"),
-            ne(messages.senderId, viewerUserId),
-            isNull(messages.readAt),
-          ),
-        )
-        .orderBy(desc(messages.createdAt))
-        .limit(MAX_ROWS_PER_CATEGORY),
-      db
-        .select({
-          id: chatRequests.id,
-          requesterUserId: chatRequests.requesterUserId,
-          requesterName: users.name,
-          message: chatRequests.message,
-          createdAt: chatRequests.createdAt,
-        })
-        .from(chatRequests)
-        .innerJoin(users, eq(users.id, chatRequests.requesterUserId))
-        .where(and(eq(chatRequests.recipientUserId, viewerUserId), eq(chatRequests.status, "pending")))
-        .orderBy(desc(chatRequests.createdAt))
-        .limit(MAX_ROWS_PER_CATEGORY),
-      db
-        .select({
-          id: chatRequests.id,
-          requesterUserId: chatRequests.requesterUserId,
-          recipientUserId: chatRequests.recipientUserId,
-          requesterName: requesterUser.name,
-          recipientName: recipientUser.name,
-          reviewedAt: chatRequests.reviewedAt,
-        })
-        .from(chatRequests)
-        .innerJoin(requesterUser, eq(requesterUser.id, chatRequests.requesterUserId))
-        .innerJoin(recipientUser, eq(recipientUser.id, chatRequests.recipientUserId))
-        .where(and(isParticipant, eq(chatRequests.status, "accepted")))
-        .orderBy(desc(chatRequests.reviewedAt))
-        .limit(MAX_ROWS_PER_CATEGORY),
-      canReviewReferrals
-        ? db
-            .select({
-              id: mentorReferrals.id,
-              mentorName: users.name,
-              mentorEmail: users.email,
-              createdAt: mentorReferrals.createdAt,
-            })
-            .from(mentorReferrals)
-            .innerJoin(users, eq(users.id, mentorReferrals.mentorUserId))
-            .where(
-              and(
-                eq(mentorReferrals.refereeUserId, viewerUserId),
-                eq(mentorReferrals.status, "pending"),
-              ),
-            )
-            .orderBy(desc(mentorReferrals.createdAt))
-            .limit(MAX_ROWS_PER_CATEGORY)
-        : Promise.resolve([]),
-    ]);
+  const [
+    blockedUserIds,
+    unreadMessageRows,
+    incomingRequestRows,
+    resolvedRequestRows,
+    incomingReferralRows,
+    ownReferralRows,
+  ] = await Promise.all([
+    getBlockedUserIds(viewerUserId),
+    db
+      .select({
+        chatRequestId: messages.chatRequestId,
+        senderId: messages.senderId,
+        senderName: users.name,
+        body: messages.body,
+        createdAt: messages.createdAt,
+      })
+      .from(messages)
+      .innerJoin(chatRequests, eq(chatRequests.id, messages.chatRequestId))
+      .innerJoin(users, eq(users.id, messages.senderId))
+      .where(
+        and(
+          isParticipant,
+          eq(chatRequests.status, "accepted"),
+          ne(messages.senderId, viewerUserId),
+          isNull(messages.readAt),
+        ),
+      )
+      .orderBy(desc(messages.createdAt))
+      .limit(MAX_ROWS_PER_CATEGORY),
+    // Someone is waiting on you to accept or reject.
+    db
+      .select({
+        id: chatRequests.id,
+        requesterUserId: chatRequests.requesterUserId,
+        requesterName: users.name,
+        message: chatRequests.message,
+        createdAt: chatRequests.createdAt,
+      })
+      .from(chatRequests)
+      .innerJoin(users, eq(users.id, chatRequests.requesterUserId))
+      .where(and(eq(chatRequests.recipientUserId, viewerUserId), eq(chatRequests.status, "pending")))
+      .orderBy(desc(chatRequests.createdAt))
+      .limit(MAX_ROWS_PER_CATEGORY),
+    // Outcomes: accepted (either side sees it) or rejected (only the person
+    // who asked). Cancelled is excluded because the requester cancelled it
+    // themselves and the recipient never needs telling.
+    db
+      .select({
+        id: chatRequests.id,
+        status: chatRequests.status,
+        requesterUserId: chatRequests.requesterUserId,
+        recipientUserId: chatRequests.recipientUserId,
+        requesterName: requesterUser.name,
+        recipientName: recipientUser.name,
+        reviewedAt: chatRequests.reviewedAt,
+      })
+      .from(chatRequests)
+      .innerJoin(requesterUser, eq(requesterUser.id, chatRequests.requesterUserId))
+      .innerJoin(recipientUser, eq(recipientUser.id, chatRequests.recipientUserId))
+      .where(and(isParticipant, inArray(chatRequests.status, ["accepted", "rejected"])))
+      .orderBy(desc(chatRequests.reviewedAt))
+      .limit(MAX_ROWS_PER_CATEGORY),
+    canReviewReferrals
+      ? db
+          .select({
+            id: mentorReferrals.id,
+            mentorName: users.name,
+            mentorEmail: users.email,
+            createdAt: mentorReferrals.createdAt,
+          })
+          .from(mentorReferrals)
+          .innerJoin(users, eq(users.id, mentorReferrals.mentorUserId))
+          .where(
+            and(eq(mentorReferrals.refereeUserId, viewerUserId), eq(mentorReferrals.status, "pending")),
+          )
+          .orderBy(desc(mentorReferrals.createdAt))
+          .limit(MAX_ROWS_PER_CATEGORY)
+      : Promise.resolve([]),
+    // The decision on your own mentor nomination. Covers a referee approving
+    // or rejecting it and an admin overriding it, since both write this row.
+    db
+      .select({
+        id: mentorReferrals.id,
+        status: mentorReferrals.status,
+        refereeEmail: mentorReferrals.refereeEmail,
+        reviewedAt: mentorReferrals.reviewedAt,
+      })
+      .from(mentorReferrals)
+      .where(
+        and(
+          eq(mentorReferrals.mentorUserId, viewerUserId),
+          inArray(mentorReferrals.status, ["confirmed", "rejected"]),
+        ),
+      )
+      .orderBy(desc(mentorReferrals.reviewedAt))
+      .limit(MAX_ROWS_PER_CATEGORY),
+  ]);
 
   // One notification per thread rather than per message, matching the
-  // distinct-people counting the Connections badge already used.
+  // distinct-people counting the old Connections badge used.
   const messageItems: NotificationItem[] = [];
   const seenThreads = new Map<string, NotificationItem>();
   for (const row of unreadMessageRows) {
@@ -199,80 +229,106 @@ export async function getNotifications(viewerUserId: string): Promise<Notificati
     messageItems.push(item);
   }
 
-  const requestItems: NotificationItem[] = pendingRequestRows
+  const connectionItems: NotificationItem[] = incomingRequestRows
     .filter((row) => !blockedUserIds.has(row.requesterUserId))
     .map((row) => ({
       id: `request:${row.id}`,
-      category: "requests" as const,
+      category: "connections" as const,
       title: row.requesterName ?? "Unnamed user",
-      body: row.message ? truncate(row.message) : "Sent you a contact request.",
+      body: row.message ? truncate(row.message) : "Wants to connect with you.",
       href: "/connections",
       createdAt: row.createdAt,
+      actionRequired: true,
     }));
 
-  // A connection only counts as news until the thread has any message in it.
-  // After that the messages category is the live signal and showing both
-  // would double-count the same person.
-  const newConnectionRows = connectionRows.filter(
-    (row) => row.reviewedAt !== null && row.reviewedAt > viewedAt,
-  );
+  // An accepted connection stops being news once its thread has any message,
+  // because the messages category is then the live signal and showing both
+  // would count the same person twice.
+  const freshOutcomes = resolvedRequestRows.filter((row) => {
+    if (row.reviewedAt === null || row.reviewedAt <= connectionsViewedAt) return false;
+    // A rejection is only ever news to the person who asked.
+    if (row.status === "rejected" && row.requesterUserId !== viewerUserId) return false;
+    const otherUserId =
+      row.requesterUserId === viewerUserId ? row.recipientUserId : row.requesterUserId;
+    return !blockedUserIds.has(otherUserId);
+  });
+
+  const acceptedIds = freshOutcomes.filter((row) => row.status === "accepted").map((row) => row.id);
   const threadsWithMessages = new Set<string>();
-  if (newConnectionRows.length > 0) {
+  if (acceptedIds.length > 0) {
     const rows = await db
       .selectDistinct({ chatRequestId: messages.chatRequestId })
       .from(messages)
-      .where(
-        inArray(
-          messages.chatRequestId,
-          newConnectionRows.map((row) => row.id),
-        ),
-      );
+      .where(inArray(messages.chatRequestId, acceptedIds));
     for (const row of rows) threadsWithMessages.add(row.chatRequestId);
   }
 
-  const connectionItems: NotificationItem[] = newConnectionRows
-    .filter((row) => {
-      if (threadsWithMessages.has(row.id)) return false;
-      const otherUserId =
-        row.requesterUserId === viewerUserId ? row.recipientUserId : row.requesterUserId;
-      return !blockedUserIds.has(otherUserId);
-    })
-    .map((row) => {
-      const viewerIsRequester = row.requesterUserId === viewerUserId;
-      return {
-        id: `connection:${row.id}`,
-        category: "connections" as const,
-        title: (viewerIsRequester ? row.recipientName : row.requesterName) ?? "Unnamed user",
-        body: viewerIsRequester
-          ? "Accepted your contact request."
-          : "You are now connected. Say hello.",
-        href: `/connections/${row.id}`,
-        createdAt: row.reviewedAt as Date,
-      };
-    });
+  for (const row of freshOutcomes) {
+    if (row.status === "accepted" && threadsWithMessages.has(row.id)) continue;
 
-  const verificationItems: NotificationItem[] = referralRows.map((row) => ({
-    id: `verification:${row.id}`,
+    const viewerIsRequester = row.requesterUserId === viewerUserId;
+    const otherName = (viewerIsRequester ? row.recipientName : row.requesterName) ?? "Unnamed user";
+
+    if (row.status === "rejected") {
+      connectionItems.push({
+        id: `rejected:${row.id}`,
+        category: "connections",
+        title: otherName,
+        body: "Declined your contact request.",
+        href: "/connections",
+        createdAt: row.reviewedAt as Date,
+      });
+      continue;
+    }
+
+    connectionItems.push({
+      id: `connection:${row.id}`,
+      category: "connections",
+      title: otherName,
+      body: viewerIsRequester ? "Accepted your contact request." : "You are now connected. Say hello.",
+      href: `/connections/${row.id}`,
+      createdAt: row.reviewedAt as Date,
+    });
+  }
+
+  const verificationItems: NotificationItem[] = incomingReferralRows.map((row) => ({
+    id: `referral:${row.id}`,
     category: "verifications" as const,
     title: row.mentorName ?? "Unnamed mentor",
     body: `Listed you as their referee (${row.mentorEmail}).`,
     href: "/requests",
     createdAt: row.createdAt,
+    actionRequired: true,
   }));
+
+  for (const row of ownReferralRows) {
+    if (row.reviewedAt === null || row.reviewedAt <= verificationsViewedAt) continue;
+
+    verificationItems.push({
+      id: `verdict:${row.id}`,
+      category: "verifications",
+      title: row.status === "confirmed" ? "Mentor verification approved" : "Mentor verification declined",
+      body:
+        row.status === "confirmed"
+          ? "You are now a verified mentor and visible on the map."
+          : `Your nomination was not approved by ${row.refereeEmail}.`,
+      href: "/profile",
+      createdAt: row.reviewedAt,
+    });
+  }
 
   const counts: Record<NotificationCategory, number> = {
     messages: messageItems.length,
-    requests: requestItems.length,
     connections: connectionItems.length,
     verifications: verificationItems.length,
   };
 
-  const items = [...messageItems, ...requestItems, ...connectionItems, ...verificationItems].sort(
+  const items = [...messageItems, ...connectionItems, ...verificationItems].sort(
     (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
   );
 
   return {
-    total: counts.messages + counts.requests + counts.connections + counts.verifications,
+    total: counts.messages + counts.connections + counts.verifications,
     counts,
     items: items.slice(0, MAX_ITEMS_RETURNED),
   };

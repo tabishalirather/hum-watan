@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { BadgeCheck, Bell, MessageCircle, UserPlus, Users } from "lucide-react";
+import { BadgeCheck, Bell, MessageCircle, Users } from "lucide-react";
 import type {
 	NotificationCategory,
 	NotificationsPayload,
@@ -21,7 +21,7 @@ const POLL_INTERVAL_MS = 30_000;
 
 const EMPTY: NotificationsResponse = {
 	total: 0,
-	counts: { messages: 0, requests: 0, connections: 0, verifications: 0 },
+	counts: { messages: 0, connections: 0, verifications: 0 },
 	items: [],
 };
 
@@ -30,16 +30,19 @@ const CATEGORY_META: Record<
 	{ label: string; icon: typeof Bell; emptyMessage: string }
 > = {
 	messages: { label: "Messages", icon: MessageCircle, emptyMessage: "No unread messages." },
-	requests: { label: "Requests", icon: UserPlus, emptyMessage: "No pending contact requests." },
-	connections: { label: "Connections", icon: Users, emptyMessage: "No new connections." },
+	connections: {
+		label: "Connections",
+		icon: Users,
+		emptyMessage: "No new requests or connections.",
+	},
 	verifications: {
-		label: "Verifications",
+		label: "Verification Requests",
 		icon: BadgeCheck,
-		emptyMessage: "No mentor nominations waiting on you.",
+		emptyMessage: "Nothing waiting on your verification.",
 	},
 };
 
-const TAB_ORDER: NotificationCategory[] = ["messages", "requests", "connections", "verifications"];
+const TAB_ORDER: NotificationCategory[] = ["messages", "connections", "verifications"];
 
 async function fetchNotifications(): Promise<NotificationsResponse> {
 	const res = await fetch("/api/notifications");
@@ -216,6 +219,14 @@ export function NotificationBell() {
 													{item.count && item.count > 1 && (
 														<span className="mt-1 inline-block rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
 															{item.count} unread
+														</span>
+													)}
+													{/* Connections now mixes things you must answer with
+													    things that merely happened, so mark the ones that
+													    still need you. */}
+													{item.actionRequired && (
+														<span className="mt-1 inline-block rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+															Action needed
 														</span>
 													)}
 												</span>
