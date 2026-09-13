@@ -45,6 +45,12 @@ export const profiles = pgTable("profiles", {
   // mentor it concerns, so nothing the mentor does would otherwise clear
   // "you were approved/rejected" from their notifications.
   verificationsViewedAt: timestamp("verifications_viewed_at"),
+  // Set when an account is barred from starting new connections or sending
+  // messages, either by an admin or automatically once it accumulates
+  // REPORT_RESTRICTION_THRESHOLD outstanding reports. Distinct from
+  // users.is_active, which blocks signing in entirely: a restricted user can
+  // still log in and see their own account.
+  restrictedAt: timestamp("restricted_at"),
   // Per-field visibility on the public profile page (/people/[userId]).
   // Name and role are never hideable — messaging depends on knowing who
   // you're talking to. These only apply to mentors, the only role with

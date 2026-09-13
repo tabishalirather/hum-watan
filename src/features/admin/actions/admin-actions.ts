@@ -261,3 +261,36 @@ export async function reviewReport(input: z.input<typeof reportDecisionSchema>) 
 
   return result ? { success: true } : { error: "Report not found." };
 }
+
+/**
+ * Applies or lifts a restriction by hand. Lifting is the only way an
+ * automatic restriction is released, so an admin always has the final say
+ * over an account the threshold caught.
+ */
+export async function setUserRestricted(userId: string, restricted: boolean, reason: string) {
+  const adminUserId = await getAdminUserId();
+  if (!adminUserId) return { error: "Only administrators can restrict accounts." };
+  const parsedReason = reasonSchema.safeParse(reason);
+  if (!parsedReason.success) return { error: parsedReason.error.issues[0]?.message };
+  if (userId === adminUserId && restricted) return { error: "You cannot restrict your own admin account." };
+
+  const result = await db.transaction(async (tx) => {
+    const [profile] = await tx
+      .update(profiles)
+      .set({ restrictedAt: restricted ? new Date() : null })
+      .where(eq(profiles.userId, userId))
+      .returning({ userId: profiles.userId });
+    if (!profile) return false;
+
+    await tx.insert(auditEvents).values({
+      actorUserId: adminUserId,
+      action: restricted ? "user_restricted" : "user_unrestricted",
+      entityType: "profile",
+      entityId: userId,
+      metadata: { reason: parsedReason.data },
+    });
+    return true;
+  });
+
+  return result ? { success: true } : { error: "Profile not found." };
+}

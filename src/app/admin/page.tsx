@@ -99,6 +99,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 					reportedUsers={reportedUsers.map((user) => ({
 						...user,
 						latestReportAt: user.latestReportAt.toISOString(),
+						restrictedAt: user.restrictedAt?.toISOString() ?? null,
 						reports: user.reports.map((report) => ({
 							...report,
 							createdAt: report.createdAt.toISOString(),

@@ -37,6 +37,7 @@ export async function getReportedUsers() {
       reportedRole: profiles.role,
       reportedVerified: profiles.verified,
       reportedVisibleOnMap: profiles.visibleOnMap,
+      reportedRestrictedAt: profiles.restrictedAt,
     })
     .from(reports)
     .innerJoin(reporterUser, eq(reporterUser.id, reports.reporterUserId))
@@ -55,6 +56,7 @@ export async function getReportedUsers() {
       isActive: boolean;
       verified: boolean | null;
       visibleOnMap: boolean | null;
+      restrictedAt: Date | null;
       actionableCount: number;
       totalCount: number;
       latestReportAt: Date;
@@ -84,6 +86,7 @@ export async function getReportedUsers() {
         isActive: row.reportedIsActive,
         verified: row.reportedVerified,
         visibleOnMap: row.reportedVisibleOnMap,
+        restrictedAt: row.reportedRestrictedAt,
         actionableCount: 0,
         totalCount: 0,
         latestReportAt: row.createdAt,

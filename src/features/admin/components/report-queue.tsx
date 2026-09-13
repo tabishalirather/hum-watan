@@ -10,6 +10,7 @@ import {
 	revokeMentorVerification,
 	setMentorMapVisibility,
 	setUserActive,
+	setUserRestricted,
 } from "@/features/admin/actions/admin-actions";
 
 type Report = {
@@ -31,6 +32,7 @@ type ReportedUser = {
 	isActive: boolean;
 	verified: boolean | null;
 	visibleOnMap: boolean | null;
+	restrictedAt: string | null;
 	actionableCount: number;
 	totalCount: number;
 	latestReportAt: string;
@@ -87,6 +89,11 @@ function ReportedUserRow({ user }: { user: ReportedUser }) {
 							{user.totalCount !== user.actionableCount && (
 								<span className="text-[10px] text-muted-foreground">{user.totalCount} total</span>
 							)}
+							{user.restrictedAt && (
+								<span className="rounded-full bg-destructive/15 px-1.5 py-0.5 text-[10px] font-semibold text-destructive">
+									Restricted
+								</span>
+							)}
 						</span>
 						<span className="block truncate text-xs text-muted-foreground">
 							{user.email} · {user.role ?? "no profile"} · {user.isActive ? "Active" : "Inactive"}
@@ -99,6 +106,18 @@ function ReportedUserRow({ user }: { user: ReportedUser }) {
 				<div className="flex flex-wrap items-center gap-2">
 					<Button size="xs" variant="outline" render={<Link href={`/people/${user.userId}`} />} nativeButton={false}>
 						View profile
+					</Button>
+					<Button
+						size="xs"
+						variant="outline"
+						disabled={isBusy}
+						onClick={() => {
+							const restricting = !user.restrictedAt;
+							const reason = askReason(restricting ? "restricting this account" : "lifting this restriction");
+							if (reason) void run(() => setUserRestricted(user.userId, restricting, reason));
+						}}
+					>
+						{user.restrictedAt ? "Lift restriction" : "Restrict"}
 					</Button>
 					<Button
 						size="xs"
