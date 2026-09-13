@@ -7,6 +7,7 @@ import { db } from "@/db/client";
 import { auditEvents } from "@/db/schema/audit";
 import { reports } from "@/db/schema/moderation";
 import { users } from "@/db/schema/auth";
+import { applyReportRestriction } from "@/features/moderation/lib/restriction";
 
 const reportSchema = z.object({
 	reportedUserId: z.string().uuid(),
@@ -53,8 +54,12 @@ export async function reportUser(input: ReportUserInput) {
 			entityId: report.id,
 			metadata: { reportedUserId, reason },
 		});
-		return report;
+		// Same transaction as the insert, so the count this reads always
+		// includes the report that just landed and two simultaneous reports
+		// cannot both miss the threshold.
+		const restriction = await applyReportRestriction(reportedUserId, tx);
+		return { report, restriction };
 	});
 
-	return { success: true, reportId: result.id };
+	return { success: true, reportId: result.report.id, restricted: result.restriction.restricted };
 }

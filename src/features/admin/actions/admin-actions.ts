@@ -7,6 +7,7 @@ import { auditEvents } from "@/db/schema/audit";
 import { profiles } from "@/db/schema/profiles";
 import { mentorReferrals } from "@/db/schema/referrals";
 import { siteSettings } from "@/db/schema/site-settings";
+import { reports } from "@/db/schema/moderation";
 import { users } from "@/db/schema/auth";
 import { getAdminUserId } from "@/features/admin/lib/require-admin";
 import { getAdminEmailPolicyError } from "@/features/admin/lib/admin-email-policy";
@@ -213,4 +214,83 @@ export async function updateSiteContent(input: z.input<typeof siteContentSchema>
   });
 
   return { success: true };
+}
+
+const reportDecisionSchema = z.object({
+  reportId: z.string().uuid(),
+  status: z.enum(["open", "reviewed", "resolved", "dismissed"]),
+  resolution: z.string().trim().max(500).optional(),
+});
+
+/**
+ * Moves a report through its lifecycle. Dismissing one is how an admin says
+ * a report was unfounded, which also stops it counting towards any
+ * threshold applied to the reported user.
+ */
+export async function reviewReport(input: z.input<typeof reportDecisionSchema>) {
+  const adminUserId = await getAdminUserId();
+  if (!adminUserId) return { error: "Only administrators can review reports." };
+
+  const parsed = reportDecisionSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid report decision." };
+  const { reportId, status, resolution } = parsed.data;
+
+  const result = await db.transaction(async (tx) => {
+    const [report] = await tx
+      .update(reports)
+      .set({
+        status,
+        resolution: resolution || null,
+        reviewedByUserId: adminUserId,
+        reviewedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(reports.id, reportId))
+      .returning({ id: reports.id, reportedUserId: reports.reportedUserId });
+    if (!report) return false;
+
+    await tx.insert(auditEvents).values({
+      actorUserId: adminUserId,
+      action: `report_${status}`,
+      entityType: "report",
+      entityId: report.id,
+      metadata: { reportedUserId: report.reportedUserId, reason: resolution || null },
+    });
+    return true;
+  });
+
+  return result ? { success: true } : { error: "Report not found." };
+}
+
+/**
+ * Applies or lifts a restriction by hand. Lifting is the only way an
+ * automatic restriction is released, so an admin always has the final say
+ * over an account the threshold caught.
+ */
+export async function setUserRestricted(userId: string, restricted: boolean, reason: string) {
+  const adminUserId = await getAdminUserId();
+  if (!adminUserId) return { error: "Only administrators can restrict accounts." };
+  const parsedReason = reasonSchema.safeParse(reason);
+  if (!parsedReason.success) return { error: parsedReason.error.issues[0]?.message };
+  if (userId === adminUserId && restricted) return { error: "You cannot restrict your own admin account." };
+
+  const result = await db.transaction(async (tx) => {
+    const [profile] = await tx
+      .update(profiles)
+      .set({ restrictedAt: restricted ? new Date() : null })
+      .where(eq(profiles.userId, userId))
+      .returning({ userId: profiles.userId });
+    if (!profile) return false;
+
+    await tx.insert(auditEvents).values({
+      actorUserId: adminUserId,
+      action: restricted ? "user_restricted" : "user_unrestricted",
+      entityType: "profile",
+      entityId: userId,
+      metadata: { reason: parsedReason.data },
+    });
+    return true;
+  });
+
+  return result ? { success: true } : { error: "Profile not found." };
 }

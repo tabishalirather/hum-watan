@@ -10,6 +10,7 @@ import { siteSettings } from "@/db/schema/site-settings";
 import { MENTEE_MESSAGE_RATE_LIMIT_ERROR } from "@/features/messages/lib/message-errors";
 import { sendMessageSchema, type SendMessageInput } from "@/features/messages/validators/message-schema";
 import { areUsersBlocked } from "@/features/moderation/queries/get-block-state";
+import { isRestricted, RESTRICTED_SENDER_ERROR } from "@/features/moderation/lib/restriction";
 
 export async function sendMessage(input: SendMessageInput) {
   const session = await auth();
@@ -36,6 +37,7 @@ export async function sendMessage(input: SendMessageInput) {
   if (await areUsersBlocked(session.user.id, otherUserId)) {
     return { error: "You cannot send messages in this conversation." };
   }
+  if (await isRestricted(session.user.id)) return { error: RESTRICTED_SENDER_ERROR };
 
   const inserted = await db.transaction(async (tx) => {
     // Serialize sends in one thread so two simultaneous requests cannot both

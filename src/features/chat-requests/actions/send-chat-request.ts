@@ -9,6 +9,7 @@ import { chatRequests } from "@/db/schema/chat-requests";
 import { siteSettings } from "@/db/schema/site-settings";
 import { sendChatRequestSchema } from "@/features/chat-requests/validators/chat-request-schema";
 import { areUsersBlocked } from "@/features/moderation/queries/get-block-state";
+import { RESTRICTED_SENDER_ERROR } from "@/features/moderation/lib/restriction";
 
 export async function sendChatRequest(input: { mentorUserId: string; message?: string }) {
   const session = await auth();
@@ -29,6 +30,7 @@ export async function sendChatRequest(input: { mentorUserId: string; message?: s
     where: eq(profiles.userId, session.user.id),
   });
   if (!requesterProfile) return { error: "Complete your profile before requesting contact." };
+  if (requesterProfile.restrictedAt) return { error: RESTRICTED_SENDER_ERROR };
 
   const recipientProfile = await db.query.profiles.findFirst({
     where: and(
