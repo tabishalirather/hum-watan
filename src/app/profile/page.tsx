@@ -23,6 +23,15 @@ export default async function ProfilePage() {
 	const account = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
 	if (!account) redirect("/");
 
+	// Clears the "your verification was approved/declined" notification. This
+	// page, not /requests, is where that outcome is cleared: /requests turns
+	// away anyone who is not already a verified mentor, so a rejected mentor
+	// could never reach it to dismiss their own bad news.
+	await db
+		.update(profiles)
+		.set({ verificationsViewedAt: new Date() })
+		.where(eq(profiles.userId, session.user.id));
+
 	const accountSection = (
 		<AccountSettingsForm
 			username={account.username}

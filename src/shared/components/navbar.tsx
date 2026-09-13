@@ -5,13 +5,16 @@ import { useSession, signOut } from "next-auth/react";
 import { ArrowUpRight, Compass, Inbox, Users } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { isMentorCapable } from "@/features/auth/lib/roles";
+import { NotificationBell } from "@/features/notifications/components/notification-bell";
 
 
 export function Navbar() {
   const { data: session, status } = useSession();
 
   return (
-    <header className="border-b border-[color:var(--border)]/80 bg-[color:var(--background)]/80 px-4 backdrop-blur-xl sm:px-8">
+    // backdrop-blur makes this header its own stacking context, so without an
+    // explicit z-index the notification panel renders behind <main>.
+    <header className="relative z-50 border-b border-[color:var(--border)]/80 bg-[color:var(--background)]/80 px-4 backdrop-blur-xl sm:px-8">
       <div className="mx-auto flex h-[4.5rem] max-w-[1440px] items-center justify-between">
         <Link href="/" className="group flex items-center gap-3">
           <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm transition-transform group-hover:-rotate-6">
@@ -50,11 +53,6 @@ export function Navbar() {
                 >
                   <Inbox />
                   Verification requests
-                  {session.user.pendingReferralCount > 0 && (
-                    <span className="flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
-                      {session.user.pendingReferralCount}
-                    </span>
-                  )}
                 </Button>
               )}
               {session.user?.role === "admin" && (
@@ -70,23 +68,8 @@ export function Navbar() {
               >
                 <Users />
                 Connections
-                {session.user.newMessageThreadsCount > 0 && (
-                  <span
-                    className="flex min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white"
-                    aria-label={`${session.user.newMessageThreadsCount} unread message threads`}
-                  >
-                    {session.user.newMessageThreadsCount}
-                  </span>
-                )}
-                {session.user.pendingReceivedRequestsCount + session.user.newConnectionsCount > 0 && (
-                  <span
-                    className="flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground"
-                    aria-label={`${session.user.pendingReceivedRequestsCount + session.user.newConnectionsCount} new connection requests`}
-                  >
-                    {session.user.pendingReceivedRequestsCount + session.user.newConnectionsCount}
-                  </span>
-                )}
               </Button>
+              <NotificationBell />
               <Button
                 render={<Link href="/profile" />}
                 nativeButton={false}
