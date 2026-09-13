@@ -342,9 +342,10 @@ src/db/schema/notifications.ts
 - [x] Prevent blocked users from new requests and messages
 - [x] Exclude blocked users from map and public-profile reads
 - [x] Add user-facing report and block controls
+- [x] Add optional private explanation field to block actions (parity with report `details`)
 - [ ] Add admin report queue and status management
 - [ ] Add admin resolution notes and moderation actions
-- [ ] Add focused report/block integration tests
+- [x] Add focused report/block integration tests
 
 ### Suggested Structure
 
@@ -442,4 +443,5 @@ src/app/admin/
 - The site-content CMS currently edits homepage copy and contact-request guidance/examples from `/admin`.
 - Site settings, CMS fields, reports, and user blocks have idempotent Supabase schema support in `scripts/apply-supabase-schema.ts`.
 - User-facing report/block actions and server-side enforcement are implemented, but the admin report queue and moderation decision UI are still unfinished.
+- Block actions now accept an optional private `details` note (mirrors report's `details` field), covered by `tests/moderation.test.ts`; `user_blocks.details` column applied to Supabase (2026-09-11).
 - The CMS has no draft, preview, revision, or rollback workflow yet.

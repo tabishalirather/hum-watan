@@ -124,16 +124,28 @@ async function main() {
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         blocker_user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         blocked_user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        details text,
         created_at timestamp NOT NULL DEFAULT now(),
         CONSTRAINT user_blocks_pair_unique UNIQUE (blocker_user_id, blocked_user_id)
       );
     `;
+    await sql`ALTER TABLE user_blocks ADD COLUMN IF NOT EXISTS details text;`;
     await sql`CREATE INDEX IF NOT EXISTS user_blocks_blocker_idx ON user_blocks (blocker_user_id, created_at);`;
     await sql`CREATE INDEX IF NOT EXISTS user_blocks_blocked_idx ON user_blocks (blocked_user_id, created_at);`;
     await sql`
       INSERT INTO site_settings (id, mentee_message_rate_limit_enabled)
       VALUES (1, false)
       ON CONFLICT (id) DO NOTHING;
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_hash text NOT NULL UNIQUE,
+        expires_at timestamp NOT NULL,
+        used_at timestamp,
+        created_at timestamp NOT NULL DEFAULT now()
+      );
     `;
 
     console.log("Supabase schema is up to date.");

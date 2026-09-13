@@ -9,12 +9,17 @@ import { userBlocks } from "@/db/schema/moderation";
 import { users } from "@/db/schema/auth";
 
 const userIdSchema = z.string().uuid();
+const blockInputSchema = z.object({
+	blockedUserId: userIdSchema,
+	details: z.string().trim().max(2000, "Keep block details under 2000 characters.").optional(),
+});
 
-export async function blockUser(blockedUserId: string) {
+export async function blockUser(input: { blockedUserId: string; details?: string }) {
 	const session = await auth();
 	if (!session?.user?.id) return { error: "You must be signed in to block a user." };
-	const parsed = userIdSchema.safeParse(blockedUserId);
-	if (!parsed.success) return { error: "Invalid user." };
+	const parsed = blockInputSchema.safeParse(input);
+	if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid block request." };
+	const { blockedUserId, details } = parsed.data;
 	if (blockedUserId === session.user.id) return { error: "You cannot block yourself." };
 
 	const [target] = await db.select({ id: users.id }).from(users).where(eq(users.id, blockedUserId));
@@ -23,7 +28,7 @@ export async function blockUser(blockedUserId: string) {
 	const result = await db.transaction(async (tx) => {
 		const [block] = await tx
 			.insert(userBlocks)
-			.values({ blockerUserId: session.user.id, blockedUserId })
+			.values({ blockerUserId: session.user.id, blockedUserId, details: details || null })
 			.onConflictDoNothing()
 			.returning({ id: userBlocks.id });
 		if (!block) return { alreadyBlocked: true };

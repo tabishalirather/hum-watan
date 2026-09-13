@@ -40,6 +40,7 @@ export const userBlocks = pgTable(
 		id: uuid("id").primaryKey().defaultRandom(),
 		blockerUserId: uuid("blocker_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
 		blockedUserId: uuid("blocked_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+		details: text("details"),
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 	},
 	(table) => [
